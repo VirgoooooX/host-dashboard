@@ -1,0 +1,125 @@
+"""Host config loader — reads hosts from a YAML file and seeds the database."""
+
+import logging
+from pathlib import Path
+from typing import Optional
+
+import yaml
+from sqlmodel import Session
+
+from app.config import get_settings
+from app.database import engine
+from app.models import HostConfig
+from app.services.crypto import encrypt_credentials, encrypt_authorization_header
+
+logger = logging.getLogger(__name__)
+
+
+def load_hosts_from_yaml() -> int:
+    """Read the HOST_CONFIG_PATH YAML file and upsert into the database.
+
+    YAML format:
+    ```yaml
+    hosts:
+      - host_id: oc-chicago
+        display_name: OC Chicago
+        dockge:
+          url: https://dockge.1989009.xyz
+          username: admin
+          password: "the-dockge-password"
+        docker_proxy:
+          url: https://docker.1989009.xyz
+          username: monitor
+          password: "the-basic-auth-pass"
+        metrics:
+          url: https://metrics.1989009.xyz
+          username: monitor
+          password: "the-basic-auth-pass"
+        sort_order: 1
+        enabled: true
+    ```
+
+    Returns the number of hosts loaded/updated.
+    """
+    settings = get_settings()
+    config_path = Path(settings.HOST_CONFIG_PATH)
+
+    if not config_path.exists() or config_path.is_dir():
+        logger.warning("Host config file not found: %s", config_path)
+        return 0
+
+    with open(config_path, "r") as f:
+        data = yaml.safe_load(f)
+
+    if not data or "hosts" not in data:
+        logger.warning("No 'hosts' key found in %s", config_path)
+        return 0
+
+    count = 0
+    with Session(engine) as session:
+        for entry in data["hosts"]:
+            host_id = entry.get("host_id", "")
+            if not host_id:
+                continue
+
+            dockge = entry.get("dockge", {})
+            docker_proxy = entry.get("docker_proxy", {})
+            metrics = entry.get("metrics", {})
+
+            # Encrypt Dockge credentials
+            dockge_password_encrypted = encrypt_credentials(
+                dockge.get("username", ""), dockge.get("password", "")
+            )
+
+            # Encrypt docker-proxy auth header
+            dp_auth = None
+            if docker_proxy.get("username") and docker_proxy.get("password"):
+                dp_auth = encrypt_authorization_header(
+                    docker_proxy["username"], docker_proxy["password"]
+                )
+
+            # Encrypt metrics auth header
+            m_auth = None
+            if metrics.get("username") and metrics.get("password"):
+                m_auth = encrypt_authorization_header(
+                    metrics["username"], metrics["password"]
+                )
+
+            # Upsert
+            existing = session.query(HostConfig).filter(
+                HostConfig.host_id == host_id
+            ).first()
+
+            if existing:
+                existing.display_name = entry.get("display_name", host_id)
+                existing.enabled = entry.get("enabled", True)
+                existing.sort_order = entry.get("sort_order", 0)
+                existing.dockge_url = dockge.get("url", "")
+                existing.dockge_username = dockge.get("username", "")
+                existing.dockge_password_encrypted = dockge_password_encrypted
+                existing.docker_proxy_url = docker_proxy.get("url", "")
+                existing.docker_proxy_auth_encrypted = dp_auth
+                existing.metrics_url = metrics.get("url", "")
+                existing.metrics_auth_encrypted = m_auth
+            else:
+                host = HostConfig(
+                    host_id=host_id,
+                    display_name=entry.get("display_name", host_id),
+                    enabled=entry.get("enabled", True),
+                    sort_order=entry.get("sort_order", 0),
+                    dockge_url=dockge.get("url", ""),
+                    dockge_username=dockge.get("username", ""),
+                    dockge_password_encrypted=dockge_password_encrypted,
+                    docker_proxy_url=docker_proxy.get("url", ""),
+                    docker_proxy_auth_encrypted=dp_auth,
+                    metrics_url=metrics.get("url", ""),
+                    metrics_auth_encrypted=m_auth,
+                )
+                session.add(host)
+
+            count += 1
+
+        session.commit()
+
+    logger.info("Loaded %d hosts from %s", count, config_path)
+    return count

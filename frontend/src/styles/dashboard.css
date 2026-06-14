@@ -1,0 +1,118 @@
+/* Docker Dashboard — 运维控制台暗色风格 */
+
+:root {
+  --bg-dark: #0f1117;
+  --bg-card: #1a1d27;
+  --bg-elevated: #232736;
+  --border-color: #2a2e3a;
+  --text-primary: #e4e7ed;
+  --text-secondary: #909399;
+}
+
+/* ── Override Element Plus dark variables ─────────────────────────── */
+
+html.dark {
+  /* Already handled by Element Plus */
+}
+
+/* Global overrides for dark theme */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+}
+
+/* Element Plus card override for dark bg */
+.el-card {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-table {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-table th.el-table__cell {
+  background: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-table__body tr:hover > td {
+  background: var(--bg-elevated) !important;
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Progress bar background */
+.el-progress-bar__outer {
+  background: #2a2e3a !important;
+}
+
+/* Tabs */
+.el-tabs__item {
+  color: var(--text-secondary) !important;
+}
+.el-tabs__item.is-active {
+  color: var(--el-color-primary) !important;
+}
+
+/* Collapse */
+.el-collapse {
+  border-color: var(--border-color) !important;
+}
+.el-collapse-item__header {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+.el-collapse-item__wrap {
+  background: var(--bg-dark) !important;
+}
+
+/* Description */
+.el-descriptions {
+  background: var(--bg-card) !important;
+}
+.el-descriptions__title {
+  color: var(--text-primary) !important;
+}
+.el-descriptions__label {
+  background: var(--bg-elevated) !important;
+  color: var(--text-secondary) !important;
+}
+.el-descriptions__content {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Drawer */
+.el-drawer {
+  background: var(--bg-dark) !important;
+}
+
+/* Alert */
+.el-alert {
+  background: var(--bg-card) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3a3f4b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4f5b;
+}

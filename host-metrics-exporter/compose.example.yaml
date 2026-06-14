@@ -1,0 +1,35 @@
+# host-metrics-exporter deployment example
+# Deploy on each Docker host alongside docker-socket-proxy.
+#
+# Usage:
+#   docker compose -f compose.example.yaml up -d
+#
+# Security:
+#   - Always protect with reverse-proxy Basic Auth or firewall rules.
+#   - PORT 8000 is the default; change if needed.
+#   - METRICS_USER / METRICS_PASS enable built-in Basic Auth.
+
+services:
+  host-metrics:
+    build: .
+    container_name: host-metrics
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      PORT: "8000"
+      # DISK_PATHS must match the volume mounts below.
+      # With /proc->/host/proc, /sys->/host/sys, /->/host/root:
+      # - "/host/root" = host root filesystem
+      # - "/host/root/mnt/nvme0n1-4" = /mnt/nvme0n1-4 on host
+      # - "/host/root/home/docker" = /home/docker on host
+      # Add more paths as comma-separated entries.
+      DISK_PATHS: "/host/root,/host/root/mnt/nvme0n1-4,/host/root/home/docker"
+      # Alternative: use host_network and set paths to real host paths:
+      # network_mode: host
+      # DISK_PATHS: "/,/mnt/nvme0n1-4,/home/docker"
+    volumes:
+      # Mount host paths read-only. Keep these in sync with DISK_PATHS above.
+      - /:/host/root:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro

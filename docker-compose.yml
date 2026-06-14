@@ -1,0 +1,53 @@
+# Docker Dashboard v1
+# Multi-host Docker management dashboard.
+#
+# Prerequisites:
+#   1. Generate JWT_SECRET: python -c "import secrets; print(secrets.token_hex(32))"
+#   2. Generate CREDENTIALS_KEY: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#   3. Hash admin password: pip install pwdlib[argon2]; python -c "from pwdlib import PasswordHash; print(PasswordHash.recommended().hash('your-password'))"
+#   4. Create hosts.yaml in ./data/ directory
+#   5. Set the three env vars below in .env
+#
+# Usage:
+#   cp .env.example .env   # edit .env with your secrets
+#   cp hosts.yaml.example data/hosts.yaml   # edit with your host configs
+#   docker compose up -d
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dashboard-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Override DB path to use a persistent volume
+      DATABASE_URL: sqlite:///./data/dashboard.db
+      HOST_CONFIG_PATH: /app/data/hosts.yaml
+    volumes:
+      - dashboard_data:/app/data
+    ports:
+      # Only expose to reverse proxy / frontend, not to the internet directly
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dashboard-frontend
+    restart: unless-stopped
+    ports:
+      # The user-facing port — put this behind Lucky / nginx with HTTPS
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  dashboard_data:
+    name: docker-dashboard_data

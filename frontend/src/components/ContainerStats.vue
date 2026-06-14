@@ -1,0 +1,55 @@
+<template>
+  <div class="container-stats">
+    <div class="stat-row">
+      <el-tooltip content="CPU 使用率" placement="top">
+        <span class="stat-item">CPU {{ stats.cpu_percent.toFixed(1) }}%</span>
+      </el-tooltip>
+      <el-tooltip content="内存使用" placement="top">
+        <span class="stat-item">MEM {{ formatBytes(stats.memory_usage) }}</span>
+      </el-tooltip>
+    </div>
+    <div class="stat-row">
+      <el-tooltip content="网络接收/发送" placement="top">
+        <span class="stat-item">↓{{ formatBytes(stats.network_rx_bytes) }} ↑{{ formatBytes(stats.network_tx_bytes) }}</span>
+      </el-tooltip>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { ContainerStatsData } from "./ContainerTable.vue";
+
+defineProps<{
+  stats: ContainerStatsData;
+}>();
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return "0";
+  const units = ["B", "KB", "MB", "GB"];
+  let i = 0;
+  let size = bytes;
+  while (size >= 1024 && i < units.length - 1) {
+    size /= 1024;
+    i++;
+  }
+  return `${size.toFixed(1)}${units[i]}`;
+}
+</script>
+
+<style scoped>
+.container-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-row {
+  display: flex;
+  gap: 8px;
+}
+.stat-item {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+</style>
