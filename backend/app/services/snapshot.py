@@ -246,10 +246,17 @@ class SnapshotManager:
                     )
                     service_name = labels.get("com.docker.compose.service")
 
+                    names = c.get("Names") or []
+                    container_name = (
+                        names[0].lstrip("/")
+                        if isinstance(names, list) and names
+                        else c.get("Name", "").lstrip("/")
+                    )
+
                     snap.containers.append(
                         ContainerSummary(
                             id=c.get("Id", "")[:12],
-                            name=c.get("Name", "").lstrip("/"),
+                            name=container_name,
                             image=c.get("Image", ""),
                             image_id=c.get("ImageID", ""),
                             state=c.get("State", "unknown"),
@@ -279,77 +286,16 @@ class SnapshotManager:
                 for c in snap.containers:
                     c.repo_digests = image_digests.get(c.image, [])
 
-                # Container stats (running only)
-                snap.stats_updated = time.monotonic()
-                for c in snap.containers:
-                    if c.state != "running":
-                        continue
-                    stats = await proxy.container_stats(c.id)
-                    if stats is None:
-                        continue
-                    try:
-                        cpu_delta = stats.get("cpu_stats", {}).get(
-                            "cpu_usage", {}
-                        ).get("total_usage", 0) - stats.get("precpu_stats", {}).get(
-                            "cpu_usage", {}
-                        ).get("total_usage", 0)
-                        system_delta = stats.get("cpu_stats", {}).get(
-                            "system_cpu_usage", 0
-                        ) - stats.get("precpu_stats", {}).get(
-                            "system_cpu_usage", 1
-                        )
-                        num_cpus = stats.get("cpu_stats", {}).get(
-                            "online_cpus", 1
-                        )
-                        cpu_percent = 0.0
-                        if system_delta > 0 and cpu_delta > 0:
-                            cpu_percent = round(
-                                (cpu_delta / system_delta) * num_cpus * 100.0, 1
-                            )
-
-                        mem = stats.get("memory_stats", {})
-                        net = stats.get("networks", {})
-                        blk = stats.get("blkio_stats", {})
-
-                        snap.container_stats[c.id] = ContainerStats(
-                            cpu_percent=cpu_percent,
-                            memory_usage=mem.get("usage", 0),
-                            memory_limit=mem.get("limit", 0),
-                            memory_percent=round(
-                                (mem.get("usage", 0) / max(mem.get("limit", 1), 1))
-                                * 100,
-                                1,
-                            ),
-                            network_rx_bytes=sum(
-                                n.get("rx_bytes", 0) for n in net.values()
-                            ),
-                            network_tx_bytes=sum(
-                                n.get("tx_bytes", 0) for n in net.values()
-                            ),
-                            block_read_bytes=sum(
-                                e.get("value", 0)
-                                for e in blk.get("io_service_bytes_recursive", [])
-                                if e.get("op") == "read"
-                            ),
-                            block_write_bytes=sum(
-                                e.get("value", 0)
-                                for e in blk.get("io_service_bytes_recursive", [])
-                                if e.get("op") == "write"
-                            ),
-                        )
-                    except Exception as exc:
-                        logger.debug(
-                            "Stats parse error for %s/%s: %s",
-                            cfg.host_id,
-                            c.id,
-                            exc,
-                        )
-
                 # Stacks from Dockge
                 await self._refresh_stacks(snap, cfg)
 
                 snap.status = "online"
                 snap.error_message = ""
+
+                # Container stats are useful but must not block stack refresh
+                # or the host's online status. Collect them after the core
+                # snapshot is visible.
+                await self._refresh_container_stats(snap, proxy, cfg)
 
                 # Trigger an initial update check after the first successful
                 # docker poll that has containers.  This handles the gap where
@@ -420,6 +366,147 @@ class SnapshotManager:
 
         except Exception as exc:
             logger.warning("Dockge refresh failed for %s: %s", cfg.host_id, exc)
+            self._build_stacks_from_container_labels(snap)
+
+    async def _refresh_container_stats(
+        self, snap: HostSnapshot, proxy: DockerProxyClient, cfg: HostConfig
+    ) -> None:
+        """Refresh running-container stats concurrently.
+
+        Docker stats calls can be slow or hang per container. Running them
+        serially delays the whole host snapshot, so cap concurrency and keep
+        failures local to each container.
+        """
+        running_containers = [c for c in snap.containers if c.state == "running"]
+        if not running_containers:
+            snap.container_stats.clear()
+            snap.stats_updated = time.monotonic()
+            return
+
+        semaphore = asyncio.Semaphore(6)
+
+        async def fetch_one(container: ContainerSummary) -> tuple[str, ContainerStats | None]:
+            async with semaphore:
+                stats = await proxy.container_stats(container.id)
+            if stats is None:
+                return container.id, None
+            try:
+                cpu_delta = stats.get("cpu_stats", {}).get(
+                    "cpu_usage", {}
+                ).get("total_usage", 0) - stats.get("precpu_stats", {}).get(
+                    "cpu_usage", {}
+                ).get("total_usage", 0)
+                system_delta = stats.get("cpu_stats", {}).get(
+                    "system_cpu_usage", 0
+                ) - stats.get("precpu_stats", {}).get("system_cpu_usage", 1)
+                num_cpus = stats.get("cpu_stats", {}).get("online_cpus", 1)
+                cpu_percent = 0.0
+                if system_delta > 0 and cpu_delta > 0:
+                    cpu_percent = round(
+                        (cpu_delta / system_delta) * num_cpus * 100.0, 1
+                    )
+
+                mem = stats.get("memory_stats", {})
+                net = stats.get("networks", {})
+                blk = stats.get("blkio_stats", {})
+
+                return container.id, ContainerStats(
+                    cpu_percent=cpu_percent,
+                    memory_usage=mem.get("usage", 0),
+                    memory_limit=mem.get("limit", 0),
+                    memory_percent=round(
+                        (mem.get("usage", 0) / max(mem.get("limit", 1), 1)) * 100,
+                        1,
+                    ),
+                    network_rx_bytes=sum(n.get("rx_bytes", 0) for n in net.values()),
+                    network_tx_bytes=sum(n.get("tx_bytes", 0) for n in net.values()),
+                    block_read_bytes=sum(
+                        e.get("value", 0)
+                        for e in blk.get("io_service_bytes_recursive", [])
+                        if e.get("op") == "read"
+                    ),
+                    block_write_bytes=sum(
+                        e.get("value", 0)
+                        for e in blk.get("io_service_bytes_recursive", [])
+                        if e.get("op") == "write"
+                    ),
+                )
+            except Exception as exc:
+                logger.debug(
+                    "Stats parse error for %s/%s: %s", cfg.host_id, container.id, exc
+                )
+                return container.id, None
+
+        results = await asyncio.gather(
+            *(fetch_one(container) for container in running_containers),
+            return_exceptions=True,
+        )
+        next_stats: dict[str, ContainerStats] = {}
+        for result in results:
+            if isinstance(result, Exception):
+                logger.debug("Stats fetch task failed for %s: %s", cfg.host_id, result)
+                continue
+            container_id, stats = result
+            if stats is not None:
+                next_stats[container_id] = stats
+
+        snap.container_stats = next_stats
+        snap.stats_updated = time.monotonic()
+
+    def _build_stacks_from_container_labels(self, snap: HostSnapshot) -> None:
+        """Build a read-only stack view from Docker Compose labels.
+
+        This keeps the monitoring UI useful when Dockge is offline or the
+        stored Dockge credential is invalid. Mutating stack operations still
+        require a working Dockge connection.
+        """
+        grouped: dict[str, list[ContainerSummary]] = {}
+        for container in snap.containers:
+            if not container.stack_name:
+                continue
+            grouped.setdefault(container.stack_name, []).append(container)
+
+        stacks: list[StackSummary] = []
+        for stack_name, containers in sorted(grouped.items()):
+            services: list[StackService] = []
+            running = 0
+            for container in containers:
+                if container.state == "running":
+                    running += 1
+                services.append(
+                    StackService(
+                        name=container.service_name or container.name,
+                        container_id=container.id,
+                        state=container.state,
+                        status=container.status,
+                    )
+                )
+
+            if running == len(services):
+                overall = "running"
+            elif running == 0:
+                overall = "stopped"
+            else:
+                overall = "partially running"
+
+            compose_file = None
+            labels = containers[0].labels if containers else {}
+            if labels:
+                compose_file = labels.get("com.docker.compose.project.config_files")
+
+            stacks.append(
+                StackSummary(
+                    name=stack_name,
+                    status=overall,
+                    compose_file=compose_file,
+                    service_count=len(services),
+                    running_count=running,
+                    services=services,
+                )
+            )
+
+        snap.stacks = stacks
+        snap.stacks_updated = time.monotonic()
 
     # ── Update checks ─────────────────────────────────────────────
 

@@ -1,0 +1,19 @@
+# host-metrics-exporter deployment using the GitHub Actions built GHCR image.
+#
+# Replace OWNER with your GitHub username or org after the workflow publishes:
+#   ghcr.io/OWNER/host-dashboard-metrics:latest
+
+services:
+  host-metrics:
+    image: ghcr.io/OWNER/host-dashboard-metrics:latest
+    container_name: host-metrics
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      PORT: "8000"
+      DISK_PATHS: "/host/root"
+    volumes:
+      - /:/host/root:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
