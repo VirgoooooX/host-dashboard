@@ -33,3 +33,7 @@ frontend/tsconfig.tsbuildinfo
 
 # Temp
 tmp/
+
+# Dev logs
+*-dev.err.log
+*-dev.out.log
