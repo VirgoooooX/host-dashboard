@@ -17,9 +17,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - service: app
-          #   context: .
-          #   image_suffix: fleetge
+          - service: app
+            context: .
+            image_suffix: fleetge
           # - service: metrics
           #   context: host-metrics-exporter
           #   image_suffix: host-dashboard-metrics-public
@@ -107,4 +107,5 @@ jobs:
           generate_release_notes: true
           body: |
             Images:
+            - `ghcr.io/${{ steps.owner.outputs.name }}/fleetge:${{ steps.version.outputs.version }}`
             - `ghcr.io/${{ steps.owner.outputs.name }}/fleetge-agent:${{ steps.version.outputs.version }}`
