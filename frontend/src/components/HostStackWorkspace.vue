@@ -984,7 +984,7 @@ onUnmounted(() => {
 .host-workspace {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
-  gap: 16px;
+  gap: 10px;
   height: 100%;
   min-height: 0;
   flex: 1;
@@ -1002,7 +1002,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px;
+  padding: 12px;
   min-width: 0;
 }
 
@@ -1141,7 +1141,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 16px;
+  padding: 12px;
   overflow-x: hidden;
   overflow-y: auto;
 }

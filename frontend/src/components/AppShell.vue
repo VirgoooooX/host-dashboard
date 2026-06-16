@@ -99,7 +99,7 @@
         </div>
       </header>
 
-      <main class="ops-content">
+      <main class="ops-content" :class="{ 'is-host-detail': route.name === 'host-detail' }">
         <slot />
       </main>
     </div>
@@ -361,6 +361,8 @@ function logout() {
 
 .ops-main {
   min-width: 0;
+  height: 100vh;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -473,8 +475,15 @@ function logout() {
 }
 
 .ops-content {
+  flex: 1;
   min-width: 0;
-  padding: 22px 24px 32px;
+  min-height: 0;
+  padding: 16px 18px 20px;
+  overflow: auto;
+}
+
+.ops-content.is-host-detail {
+  overflow: hidden;
 }
 
 @media (max-width: 900px) {
@@ -511,6 +520,10 @@ function logout() {
     flex: 0 0 auto;
   }
 
+  .ops-main {
+    height: auto;
+  }
+
   .ops-topbar {
     position: static;
     align-items: flex-start;
@@ -519,6 +532,7 @@ function logout() {
   }
 
   .ops-content {
+    overflow: visible;
     padding: 16px;
   }
 }

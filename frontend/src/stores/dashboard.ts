@@ -51,6 +51,64 @@ export interface UpdateResult {
   status: string;
 }
 
+export interface StackService {
+  name: string;
+  container_id?: string;
+  state: string;
+  status: string;
+}
+
+export interface StackSummary {
+  name: string;
+  status: string;
+  compose_file?: string;
+  service_count: number;
+  running_count: number;
+  services: StackService[];
+  icon_url?: string;
+}
+
+export interface ContainerPort {
+  private_port: number;
+  public_port?: number;
+  ip?: string;
+  type: string;
+}
+
+export interface ContainerSummary {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  created: number;
+  ports: ContainerPort[];
+  stack_name?: string;
+  service_name?: string;
+  labels?: Record<string, string>;
+  image_id?: string;
+}
+
+export interface ContainerStats {
+  cpu_percent: number;
+  memory_usage: number;
+  memory_limit: number;
+  memory_percent: number;
+  network_rx_bytes: number;
+  network_tx_bytes: number;
+  block_read_bytes: number;
+  block_write_bytes: number;
+}
+
+export interface HostDetailCache {
+  host: HostSummary | null;
+  stacks: StackSummary[];
+  containers: ContainerSummary[];
+  containerStats: Record<string, ContainerStats>;
+  updateResults: UpdateResult[];
+  cachedAt: number;
+}
+
 export const useDashboardStore = defineStore("dashboard", () => {
   const hosts = ref<HostSummary[]>([]);
   const updateResults = ref<UpdateResult[]>([]);
@@ -59,6 +117,7 @@ export const useDashboardStore = defineStore("dashboard", () => {
   const updateLoading = ref(false);
   const error = ref("");
   const manualLoading = ref(false);
+  const hostDetailsById = ref<Record<string, HostDetailCache>>({});
 
   const updateCountsByHost = computed(() => {
     const counts: Record<string, number> = {};
@@ -115,6 +174,33 @@ export const useDashboardStore = defineStore("dashboard", () => {
         ...hosts.value.slice(index + 1),
       ];
     }
+  }
+
+  function getHostDetailCache(hostId: string): HostDetailCache | null {
+    return hostDetailsById.value[hostId] || null;
+  }
+
+  function setHostDetailCache(hostId: string, detail: Omit<HostDetailCache, "cachedAt">) {
+    hostDetailsById.value = {
+      ...hostDetailsById.value,
+      [hostId]: {
+        ...detail,
+        cachedAt: Date.now(),
+      },
+    };
+  }
+
+  function patchHostDetailUpdateResults(hostId: string, newResults: UpdateResult[]) {
+    const cached = hostDetailsById.value[hostId];
+    if (!cached) return;
+    hostDetailsById.value = {
+      ...hostDetailsById.value,
+      [hostId]: {
+        ...cached,
+        updateResults: newResults,
+        cachedAt: Date.now(),
+      },
+    };
   }
 
   async function fetchHosts() {
@@ -288,6 +374,10 @@ export const useDashboardStore = defineStore("dashboard", () => {
     applyUpdateResults,
     applyHosts,
     upsertHost,
+    getHostDetailCache,
+    setHostDetailCache,
+    patchHostDetailUpdateResults,
+    hostDetailsById,
     getHostUpdateCount,
     fetchHosts,
     refreshHosts,

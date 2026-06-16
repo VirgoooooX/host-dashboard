@@ -97,67 +97,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { apiClient } from "@/api/client";
-import { useDashboardStore, type HostSummary } from "@/stores/dashboard";
-
-interface StackService {
-  name: string;
-  container_id?: string;
-  state: string;
-  status: string;
-}
-
-interface StackSummary {
-  name: string;
-  status: string;
-  compose_file?: string;
-  service_count: number;
-  running_count: number;
-  services: StackService[];
-  icon_url?: string;  // 自定义图标
-}
-
-interface ContainerPort {
-  private_port: number;
-  public_port?: number;
-  ip?: string;
-  type: string;
-}
-
-interface ContainerSummary {
-  id: string;
-  name: string;
-  image: string;
-  state: string;
-  status: string;
-  created: number;
-  ports: ContainerPort[];
-  stack_name?: string;
-  service_name?: string;
-  labels?: Record<string, string>;
-  image_id?: string;
-}
-
-interface ContainerStats {
-  cpu_percent: number;
-  memory_usage: number;
-  memory_limit: number;
-  memory_percent: number;
-  network_rx_bytes: number;
-  network_tx_bytes: number;
-  block_read_bytes: number;
-  block_write_bytes: number;
-}
-
-interface UpdateResult {
-  host_id: string;
-  image: string;
-  current_digest?: string;
-  registry_digest?: string;
-  status: string;
-}
+import {
+  useDashboardStore,
+  type HostSummary,
+  type StackSummary,
+  type ContainerSummary,
+  type ContainerStats,
+  type UpdateResult,
+} from "@/stores/dashboard";
 import HostMetricsBar from "@/components/HostMetricsBar.vue";
 import HostStackWorkspace from "@/components/HostStackWorkspace.vue";
 
@@ -173,17 +123,8 @@ const containerStats = ref<Record<string, ContainerStats>>({});
 const updateResults = ref<UpdateResult[]>([]);
 const updateLoading = ref(false);
 
-type HostDetailCache = {
-  host: HostSummary | null;
-  stacks: StackSummary[];
-  containers: ContainerSummary[];
-  containerStats: Record<string, ContainerStats>;
-  updateResults: UpdateResult[];
-};
-
 const structureLoading = ref(false);
 const detailRequestSeq = ref(0);
-const hostDetailsById = reactive<Record<string, HostDetailCache>>({});
 
 // Computed metrics
 const memPercent = computed(() => {
@@ -283,7 +224,7 @@ function activateHostDetail(targetHostId: string) {
   );
   host.value = currentHost || null;
 
-  const cached = hostDetailsById[targetHostId];
+  const cached = dashboardStore.getHostDetailCache(targetHostId);
   if (cached) {
     stacks.value = cached.stacks;
     containers.value = cached.containers;
@@ -371,25 +312,21 @@ async function fetchDetailCached(options: { skipUpdates?: boolean; silent?: bool
     }
 
     // Update cache
-    const existingCache = hostDetailsById[requestedHostId];
-    hostDetailsById[requestedHostId] = {
+    dashboardStore.setHostDetailCache(requestedHostId, {
       host: host.value,
       stacks: stacks.value,
       containers: containers.value,
       containerStats: containerStats.value,
       updateResults: options.skipUpdates
-        ? (existingCache?.updateResults || [])
+        ? (dashboardStore.getHostDetailCache(requestedHostId)?.updateResults || [])
         : updateResults.value,
-    };
+    });
 
     if (!options.skipUpdates) {
       const fetchedUpdateResults = await fetchUpdateResults(requestedHostId);
       // Only update cache's updateResults if still on the same request
       if (requestId === detailRequestSeq.value && requestedHostId === hostId.value) {
-        const cache = hostDetailsById[requestedHostId];
-        if (cache) {
-          cache.updateResults = fetchedUpdateResults;
-        }
+        dashboardStore.patchHostDetailUpdateResults(requestedHostId, fetchedUpdateResults);
       }
     }
   } catch (e: any) {
@@ -429,25 +366,21 @@ async function fetchDetail(options: { skipUpdates?: boolean; silent?: boolean } 
     }
 
     // Update cache
-    const existingCache = hostDetailsById[requestedHostId];
-    hostDetailsById[requestedHostId] = {
+    dashboardStore.setHostDetailCache(requestedHostId, {
       host: host.value,
       stacks: stacks.value,
       containers: containers.value,
       containerStats: containerStats.value,
       updateResults: options.skipUpdates
-        ? (existingCache?.updateResults || [])
+        ? (dashboardStore.getHostDetailCache(requestedHostId)?.updateResults || [])
         : updateResults.value,
-    };
+    });
 
     if (!options.skipUpdates) {
       const fetchedUpdateResults = await fetchUpdateResults(requestedHostId);
       // Only update cache's updateResults if still on the same request
       if (requestId === detailRequestSeq.value && requestedHostId === hostId.value) {
-        const cache = hostDetailsById[requestedHostId];
-        if (cache) {
-          cache.updateResults = fetchedUpdateResults;
-        }
+        dashboardStore.patchHostDetailUpdateResults(requestedHostId, fetchedUpdateResults);
       }
     }
   } catch (e: any) {
@@ -512,9 +445,9 @@ onUnmounted(() => {
 .detail-layout {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  height: calc(100vh - 118px);
-  min-height: 560px;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 

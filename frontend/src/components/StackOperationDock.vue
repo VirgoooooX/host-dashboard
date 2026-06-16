@@ -52,7 +52,7 @@ const terminalRef = ref<HTMLElement | null>(null);
 const copied = ref(false);
 let terminal: XtermTerminal | null = null;
 let fitAddon: FitAddon | null = null;
-let renderedLineCount = 0;
+let renderedSignature = "";
 let resizeObserver: ResizeObserver | null = null;
 let themeObserver: MutationObserver | null = null;
 
@@ -143,22 +143,18 @@ onBeforeUnmount(() => {
 watch(
   () => [props.stackName, props.action],
   () => {
-    renderedLineCount = 0;
+    renderedSignature = "";
     terminal?.clear();
     flushLines(true);
   },
 );
 
 watch(
-  () => props.lines.length,
+  () => props.lines,
   () => {
-    if (props.lines.length < renderedLineCount) {
-      renderedLineCount = 0;
-      terminal?.clear();
-    }
     flushLines();
   },
-  { flush: "post" },
+  { deep: true, flush: "post" },
 );
 
 function fitTerminal() {
@@ -182,26 +178,105 @@ function applyTerminalTheme() {
 
 function flushLines(force = false) {
   if (!terminal) return;
-  if (force && renderedLineCount === 0 && props.lines.length === 0) {
+  if (force && props.lines.length === 0) {
+    renderedSignature = "__waiting__";
+    terminal.clear();
     terminal.write("\x1b[2mWaiting for Dockge output...\x1b[0m\r\n");
     return;
   }
 
-  if (renderedLineCount === 0) {
-    terminal.clear();
-  }
+  const displayLines = formatDockgeOutput(props.lines);
+  const signature = displayLines.join("\n");
+  if (!force && signature === renderedSignature) return;
 
-  const pending = props.lines.slice(renderedLineCount);
-  for (const line of pending) {
+  renderedSignature = signature;
+  terminal.clear();
+  terminal.reset();
+  terminal.options.theme = currentTerminalTheme();
+  for (const line of displayLines) {
     terminal.write(normalizeTerminalLine(line));
   }
-  renderedLineCount = props.lines.length;
   fitTerminal();
 }
 
 function normalizeTerminalLine(line: string): string {
-  const text = line.endsWith("\n") || line.endsWith("\r") ? line : `${line}\r\n`;
-  return text.replace(/\n/g, "\r\n");
+  const text = line.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  return `${text.replace(/\n/g, "\r\n")}\r\n`;
+}
+
+function formatDockgeOutput(lines: string[]): string[] {
+  const output: string[] = [];
+  const pullLineIndexes = new Map<string, number>();
+  let activePullGroup = false;
+  let lastPullKey: string | null = null;
+
+  for (const rawLine of lines) {
+    const splitLines = String(rawLine || "")
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .split("\n");
+
+    for (const splitLine of splitLines) {
+      const line = splitLine.trimEnd();
+      if (!line) continue;
+
+      const pullKey = dockgePullLineKey(line);
+      if (pullKey) {
+        const index = pullLineIndexes.get(pullKey);
+        if (index === undefined) {
+          pullLineIndexes.set(pullKey, output.length);
+          output.push(line);
+        } else {
+          output[index] = line;
+        }
+        activePullGroup = true;
+        lastPullKey = pullKey;
+        continue;
+      }
+
+      const duration = pullDuration(line);
+      if (activePullGroup && duration && lastPullKey) {
+        const index = pullLineIndexes.get(lastPullKey);
+        if (index !== undefined && !pullDuration(output[index])) {
+          output[index] = `${output[index]}        ${duration}`;
+        }
+        continue;
+      }
+
+      if (activePullGroup && isTransientPullNoise(line)) {
+        continue;
+      }
+
+      activePullGroup = false;
+      lastPullKey = null;
+      output.push(line);
+    }
+  }
+
+  return output.slice(-120);
+}
+
+function dockgePullLineKey(line: string): string | null {
+  const clean = stripAnsi(line).trim();
+  if (/^\[\+\]\s+Pulling\b/.test(clean)) return "pull-summary";
+
+  const serviceMatch = clean.match(/^[^\w.-]*([\w.-]+)\s+.*\bPulling\b/);
+  if (serviceMatch) return `pull-service:${serviceMatch[1]}`;
+
+  return null;
+}
+
+function isTransientPullNoise(line: string): boolean {
+  const clean = stripAnsi(line).trim();
+  return clean === "Pulling";
+}
+
+function pullDuration(line: string): string | null {
+  return stripAnsi(line).trim().match(/^(\d+(?:\.\d+)?s)$/)?.[1] || null;
+}
+
+function stripAnsi(value: string): string {
+  return value.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "");
 }
 
 async function copyOutput() {
