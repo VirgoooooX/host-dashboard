@@ -4,6 +4,7 @@
       v-for="stack in stacks"
       :key="stack.name"
       class="stack-card"
+      :class="{ 'is-stopped': stack.status === 'stopped' }"
       shadow="never"
     >
       <div class="stack-header">
@@ -296,6 +297,23 @@ function openCompose(stackName: string) {
 .stack-card {
   border: 1px solid var(--border-subtle) !important;
   background: var(--stack-card-bg, rgba(11, 18, 32, 0.78)) !important;
+}
+.stack-card.is-stopped {
+  border-style: dashed !important;
+  opacity: 0.75;
+}
+.stack-card.is-stopped:hover {
+  opacity: 0.95;
+}
+.stack-card.is-stopped .stack-header-left :deep(.el-icon) {
+  color: var(--text-muted) !important;
+}
+.stack-card.is-stopped .stack-icon-img {
+  filter: grayscale(100%);
+  opacity: 0.55;
+}
+.stack-card.is-stopped .stack-name {
+  color: var(--text-secondary);
 }
 .stack-card :deep(.el-card__body) {
   padding: 14px 16px;

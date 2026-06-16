@@ -1,5 +1,9 @@
 FROM python:3.11-slim
 
+# Copy docker and docker-compose-plugin from the official docker image
+COPY --from=docker:latest /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker:latest /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
+
 WORKDIR /app
 
 COPY requirements.txt .

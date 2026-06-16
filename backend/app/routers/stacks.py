@@ -560,9 +560,11 @@ async def get_stack_logs(
         return {"logs": "", "host_id": host_id, "stack": stack_name}
 
     # Create a proxy client for this host and fetch logs per container
-    from app.services.docker_proxy import DockerProxyClient
-
-    proxy = DockerProxyClient(snap.host_config)
+    if snap.host_config.agent_url:
+        proxy = AgentClient(snap.host_config)
+    else:
+        from app.services.docker_proxy import DockerProxyClient
+        proxy = DockerProxyClient(snap.host_config)
     try:
         logs_parts: list[str] = []
         for c in stack_containers:
@@ -612,9 +614,11 @@ async def stream_stack_logs(
             )
             return
 
-        from app.services.docker_proxy import DockerProxyClient
-
-        proxy = DockerProxyClient(snap.host_config)
+        if snap.host_config.agent_url:
+            proxy = AgentClient(snap.host_config)
+        else:
+            from app.services.docker_proxy import DockerProxyClient
+            proxy = DockerProxyClient(snap.host_config)
         queue: asyncio.Queue = asyncio.Queue()
         tasks: list[asyncio.Task] = []
         done_task: Optional[asyncio.Task] = None

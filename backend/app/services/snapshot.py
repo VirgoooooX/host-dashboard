@@ -85,6 +85,9 @@ class HostSnapshot:
 class SnapshotManager:
     """Manages all host snapshots with tiered polling."""
 
+    # Backoff schedule for unreachable hosts (seconds)
+    _BACKOFF_SCHEDULE = (5, 15, 30, 60, 120)
+
     def __init__(self):
         self._snapshots: dict[str, HostSnapshot] = {}
         self._lock = asyncio.Lock()
@@ -106,6 +109,10 @@ class SnapshotManager:
         self._active_connections = 0
         self._connection_event = asyncio.Event()
 
+        # Failure backoff: skip unreachable hosts so they don't slow the poll cycle
+        self._consecutive_failures: dict[str, int] = {}
+        self._backoff_until: dict[str, float] = {}
+
     def increment_connections(self) -> None:
         self._active_connections += 1
         self._connection_event.set()
@@ -114,6 +121,33 @@ class SnapshotManager:
     def decrement_connections(self) -> None:
         self._active_connections = max(0, self._active_connections - 1)
         logger.info("Active connections decremented: %d", self._active_connections)
+
+    # ── Failure backoff ─────────────────────────────────────────────
+
+    def _should_skip(self, host_id: str) -> bool:
+        """Return True if this host should be skipped due to recent failures."""
+        until = self._backoff_until.get(host_id)
+        if until is None:
+            return False
+        if time.monotonic() < until:
+            return True
+        # Backoff expired — allow one probe
+        self._backoff_until.pop(host_id, None)
+        return False
+
+    def _record_failure(self, host_id: str) -> None:
+        n = self._consecutive_failures.get(host_id, 0) + 1
+        self._consecutive_failures[host_id] = n
+        idx = min(n - 1, len(self._BACKOFF_SCHEDULE) - 1)
+        delay = self._BACKOFF_SCHEDULE[idx]
+        self._backoff_until[host_id] = time.monotonic() + delay
+        logger.info("host %s: %d consecutive failures, backoff %ds", host_id, n, delay)
+
+    def _record_success(self, host_id: str) -> None:
+        prev = self._consecutive_failures.pop(host_id, 0)
+        self._backoff_until.pop(host_id, None)
+        if prev > 0:
+            logger.info("host %s: recovered after %d failures", host_id, prev)
 
     # ── Public ─────────────────────────────────────────────────────
 
@@ -321,18 +355,25 @@ class SnapshotManager:
                 if not snap.host_config:
                     return
                 cfg = snap.host_config
-                if cfg.agent_url:
-                    if cfg.host_id not in self._agent_clients:
-                        self._agent_clients[cfg.host_id] = AgentClient(cfg)
-                    agent = self._agent_clients[cfg.host_id]
-                    metrics = await agent.fetch_metrics()
-                else:
-                    if cfg.host_id not in self._metrics_clients:
-                        self._metrics_clients[cfg.host_id] = MetricsClient(cfg)
-                    client = self._metrics_clients[cfg.host_id]
-                    metrics = await client.fetch()
-                snap.metrics = metrics
-                snap.metrics_updated = time.monotonic()
+                if self._should_skip(cfg.host_id):
+                    return
+                try:
+                    if cfg.agent_url:
+                        if cfg.host_id not in self._agent_clients:
+                            self._agent_clients[cfg.host_id] = AgentClient(cfg)
+                        agent = self._agent_clients[cfg.host_id]
+                        metrics = await agent.fetch_metrics()
+                    else:
+                        if cfg.host_id not in self._metrics_clients:
+                            self._metrics_clients[cfg.host_id] = MetricsClient(cfg)
+                        client = self._metrics_clients[cfg.host_id]
+                        metrics = await client.fetch()
+                    snap.metrics = metrics
+                    snap.metrics_updated = time.monotonic()
+                    self._record_success(cfg.host_id)
+                except Exception:
+                    self._record_failure(cfg.host_id)
+                    raise
 
             results = await asyncio.gather(
                 *(refresh_one(snap) for snap in list(self._snapshots.values())),
@@ -351,6 +392,8 @@ class SnapshotManager:
         execution_timeout: float = 15.0,
     ) -> None:
         """Poll docker-socket-proxy and Dockge for a specific host immediately."""
+        if self._should_skip(host_id):
+            return
         lock = self._host_refresh_locks.setdefault(host_id, asyncio.Lock())
         snap = self._snapshots.get(host_id)
 
@@ -603,8 +646,11 @@ class SnapshotManager:
             logger.warning(
                 "Docker proxy poll failed for %s: %s", cfg.host_id, exc, exc_info=True
             )
+            self._record_failure(cfg.host_id)
             snap.status = "degraded"
             snap.error_message = str(exc)
+        else:
+            self._record_success(cfg.host_id)
 
     async def refresh_host_docker_with_retry(
         self, host_id: str, steps: list[float] = [0.0, 2.0, 5.0, 8.0]

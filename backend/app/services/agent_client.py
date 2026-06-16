@@ -49,6 +49,18 @@ class AgentClient:
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self._token}"} if self._token else {}
 
+    def _connect_websocket(self, ws_uri: str):
+        """Helper to call websockets.connect compatible with both older and newer websockets versions."""
+        import inspect
+        extra_headers = self._headers()
+        connect_sig = inspect.signature(websockets.connect)
+        kwargs = {}
+        if "additional_headers" in connect_sig.parameters:
+            kwargs["additional_headers"] = extra_headers
+        else:
+            kwargs["extra_headers"] = extra_headers
+        return websockets.connect(ws_uri, **kwargs)
+
     async def close(self) -> None:
         await self._client.aclose()
 
@@ -268,11 +280,10 @@ class AgentClient:
 
         # Establish WebSocket URI — token passed via Authorization header
         ws_uri = f"{self._ws_base_url}/api/agent/stacks/{name}/execute"
-        extra_headers = self._headers()
 
         # Run process via WebSocket connection
         try:
-            async with websockets.connect(ws_uri, extra_headers=extra_headers) as ws:
+            async with self._connect_websocket(ws_uri) as ws:
                 # Send action payload
                 await ws.send(f'{{"action": "{agent_action}"}}')
                 
@@ -326,10 +337,9 @@ class AgentClient:
         ``{"success": bool, "message": str}`` dict.
         """
         ws_uri = f"{self._ws_base_url}/api/agent/host/prune"
-        extra_headers = self._headers()
 
         try:
-            async with websockets.connect(ws_uri, extra_headers=extra_headers) as ws:
+            async with self._connect_websocket(ws_uri) as ws:
                 exit_code = 0
                 error_msg = ""
 

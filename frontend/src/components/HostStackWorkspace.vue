@@ -66,7 +66,7 @@
             v-for="stack in filteredStacks"
             :key="stack.name"
             class="stack-nav-item"
-            :class="{ active: selectedStackName === stack.name }"
+            :class="{ active: selectedStackName === stack.name, 'is-stopped': stack.status === 'stopped' }"
             type="button"
             @click="selectStack(stack.name)"
           >
@@ -114,6 +114,7 @@
             v-for="stack in filteredStacks"
             :key="stack.name"
             class="dockge-stack-card"
+            :class="{ 'is-stopped': stack.status === 'stopped' }"
             @click="selectStack(stack.name)"
           >
             <div class="dockge-stack-header">
@@ -197,7 +198,7 @@
       </div>
 
       <div v-else class="stack-detail-view">
-        <header class="detail-hero">
+        <header class="detail-hero" :class="{ 'is-stopped': selectedStack.status === 'stopped' }">
           <div class="detail-title-block">
             <div class="detail-title-row">
               <span class="dot-state detail-status-dot" :class="`dot-${stackStatusType(selectedStack.status)}`" />
@@ -746,7 +747,7 @@ import {
   ArrowRight,
   Brush,
 } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { useI18n } from "vue-i18n";
 import { apiClient } from "@/api/client";
 import { streamSse } from "@/api/sse";
@@ -1531,6 +1532,27 @@ onUnmounted(() => {
   background: var(--surface-muted);
 }
 
+.stack-nav-item.is-stopped {
+  opacity: 0.75;
+}
+
+.stack-nav-item.is-stopped:hover {
+  opacity: 0.95;
+}
+
+.stack-nav-item.is-stopped .nav-stack-icon {
+  color: var(--text-muted) !important;
+}
+
+.stack-nav-item.is-stopped .nav-stack-icon-img {
+  filter: grayscale(100%);
+  opacity: 0.55;
+}
+
+.stack-nav-item.is-stopped .nav-stack-name {
+  color: var(--text-secondary);
+}
+
 .stack-nav-item.all {
   min-height: 50px;
   padding-block: 5px;
@@ -1704,6 +1726,29 @@ onUnmounted(() => {
 
 .dockge-stack-card:hover {
   border-color: var(--border-strong);
+}
+
+.dockge-stack-card.is-stopped {
+  border-style: dashed !important;
+  opacity: 0.75;
+  background: var(--surface-panel-raised, rgba(15, 23, 42, 0.2)) !important;
+}
+
+.dockge-stack-card.is-stopped:hover {
+  opacity: 0.95;
+}
+
+.dockge-stack-card.is-stopped .stack-title-icon {
+  color: var(--text-muted) !important;
+}
+
+.dockge-stack-card.is-stopped .stack-icon-img {
+  filter: grayscale(100%);
+  opacity: 0.55;
+}
+
+.dockge-stack-card.is-stopped .dockge-stack-name {
+  color: var(--text-secondary);
 }
 
 .stack-title-row {
@@ -1880,6 +1925,12 @@ onUnmounted(() => {
 .detail-hero {
   align-items: flex-start;
   margin-bottom: 12px;
+}
+
+.detail-hero.is-stopped .detail-stack-icon {
+  color: var(--text-muted) !important;
+  filter: grayscale(100%);
+  opacity: 0.55;
 }
 
 .detail-title-row {
