@@ -1,16 +1,12 @@
 # Fleetge
 # Multi-host Docker fleet management console.
 #
-# Prerequisites:
-#   1. Generate JWT_SECRET: python -c "import secrets; print(secrets.token_hex(32))"
-#   2. Generate CREDENTIALS_KEY: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-#   3. Hash admin password: pip install pwdlib[argon2]; python -c "from pwdlib import PasswordHash; print(PasswordHash.recommended().hash('your-password'))"
-#   4. Create hosts.yaml in ./data/ directory
-#   5. Set the three env vars below in .env
+# Secrets are injected via shell environment or a .env file in the
+# project directory (docker compose reads .env automatically).
 #
 # Usage:
-#   cp .env.example .env   # edit .env with your secrets
 #   cp hosts.yaml.example data/hosts.yaml   # edit with your host configs
+#   export JWT_SECRET=... CREDENTIALS_KEY=... ADMIN_PASSWORD_HASH=...
 #   docker compose up -d
 
 services:
@@ -20,9 +16,12 @@ services:
       dockerfile: Dockerfile
     container_name: fleetge
     restart: unless-stopped
-    env_file: .env
     environment:
-      # Runtime state lives in the mounted data directory; images stay stateless.
+      # ── Secrets (set via shell env or .env at deploy time) ────────
+      JWT_SECRET: ${JWT_SECRET}
+      CREDENTIALS_KEY: ${CREDENTIALS_KEY}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+      # ── Runtime config ────────────────────────────────────────────
       DATABASE_URL: sqlite:////app/data/dashboard-local.db
       HOST_CONFIG_PATH: /app/data/hosts.yaml
     volumes:
