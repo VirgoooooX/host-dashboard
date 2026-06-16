@@ -5,11 +5,15 @@ host-metrics-exporter
 Minimal read-only HTTP metrics exporter for Fleetge.
 One endpoint: GET /metrics/json → host CPU/memory/disk/network/load/uptime.
 
+Metrics are collected by a background thread on a fixed interval so HTTP
+handlers never block on I/O (especially psutil.cpu_percent(interval=1)).
+
 Environment:
-  PORT          - listen port (default: 8000)
-  DISK_PATHS    - comma-separated mount points to monitor (default: /)
-  METRICS_USER  - optional Basic Auth username (omit = no auth)
-  METRICS_PASS  - optional Basic Auth password
+  PORT            - listen port (default: 8000)
+  DISK_PATHS      - comma-separated mount points to monitor (default: /)
+  COLLECT_INTERVAL- background collection interval in seconds (default: 5)
+  METRICS_USER    - optional Basic Auth username (omit = no auth)
+  METRICS_PASS    - optional Basic Auth password
 
 Usage:
   python exporter.py
@@ -20,6 +24,7 @@ import os
 import platform
 import signal
 import sys
+import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime, timezone
@@ -37,17 +42,18 @@ except ImportError:
 
 PORT = int(os.environ.get("PORT", "8000"))
 DISK_PATHS = [p.strip() for p in os.environ.get("DISK_PATHS", "/").split(",") if p.strip()]
+COLLECT_INTERVAL = float(os.environ.get("COLLECT_INTERVAL", "5"))
 METRICS_USER = os.environ.get("METRICS_USER", "")
 METRICS_PASS = os.environ.get("METRICS_PASS", "")
 HOSTNAME = platform.node() or "unknown"
 
 # ---------------------------------------------------------------------------
-# Rate tracking — prev values for network & disk I/O rate calculation
+# Background metrics cache — thread-safe, never blocks HTTP handlers
 # ---------------------------------------------------------------------------
 
-_prev_net: tuple | None = None
-_prev_disk: tuple | None = None
-_prev_time: float = 0.0
+_cache_lock = threading.Lock()
+_cached_metrics: dict = {}
+_last_collect_ok: bool = True
 
 
 def _safe_float(val, default=0.0) -> float:
@@ -58,17 +64,12 @@ def _safe_float(val, default=0.0) -> float:
         return default
 
 
-# ---------------------------------------------------------------------------
-# Metrics collection
-# ---------------------------------------------------------------------------
+def _collect_once() -> dict:
+    """Perform one full metrics collection (may block up to ~1.5 s).
 
-
-def collect() -> dict:
-    """Return a snapshot of host metrics, including network and disk I/O rates."""
-    now = time.monotonic()
-    global _prev_net, _prev_disk, _prev_time
-
-    # CPU
+    Called ONLY from the background thread — never from an HTTP handler.
+    """
+    # CPU — interval=1 blocks here, which is why this runs in a bg thread
     cpu = psutil.cpu_percent(interval=1)
 
     # Memory
@@ -95,33 +96,8 @@ def collect() -> dict:
         disk_read_bytes = disk_io.read_bytes
         disk_write_bytes = disk_io.write_bytes
     except Exception:
-        disk_io = None
         disk_read_bytes = 0
         disk_write_bytes = 0
-
-    # Compute rates from deltas
-    dt = now - _prev_time if _prev_time > 0 else 0
-    network_rx_rate = 0.0
-    network_tx_rate = 0.0
-    disk_read_rate = 0.0
-    disk_write_rate = 0.0
-
-    if dt > 0 and _prev_net is not None:
-        drx = net.bytes_recv - _prev_net[0]
-        dtx = net.bytes_sent - _prev_net[1]
-        network_rx_rate = round(drx / dt, 1) if drx >= 0 else 0.0
-        network_tx_rate = round(dtx / dt, 1) if dtx >= 0 else 0.0
-
-    if dt > 0 and _prev_disk is not None:
-        drb = disk_read_bytes - _prev_disk[0]
-        dwb = disk_write_bytes - _prev_disk[1]
-        disk_read_rate = round(drb / dt, 1) if drb >= 0 else 0.0
-        disk_write_rate = round(dwb / dt, 1) if dwb >= 0 else 0.0
-
-    # Update state for next call
-    _prev_net = (net.bytes_recv, net.bytes_sent)
-    _prev_disk = (disk_read_bytes, disk_write_bytes)
-    _prev_time = now
 
     # Load average
     load_raw = psutil.getloadavg()
@@ -144,12 +120,8 @@ def collect() -> dict:
         "diskTotal": disk_total,
         "networkRxBytes": net.bytes_recv,
         "networkTxBytes": net.bytes_sent,
-        "networkRxRate": network_rx_rate,
-        "networkTxRate": network_tx_rate,
         "diskReadBytes": disk_read_bytes,
         "diskWriteBytes": disk_write_bytes,
-        "diskReadRate": disk_read_rate,
-        "diskWriteRate": disk_write_rate,
         "loadavg": load_avg,
         "uptime": uptime,
     }
@@ -160,13 +132,42 @@ def collect() -> dict:
     return result
 
 
+def _collector_loop() -> NoReturn:
+    """Background thread: collect metrics every COLLECT_INTERVAL seconds."""
+    global _cached_metrics, _last_collect_ok
+
+    # First call: prime cpu_percent so subsequent calls have a baseline
+    psutil.cpu_percent(interval=None)
+
+    while True:
+        try:
+            snapshot = _collect_once()
+            with _cache_lock:
+                _cached_metrics = snapshot
+                _last_collect_ok = True
+        except Exception as exc:
+            with _cache_lock:
+                _last_collect_ok = False
+            print(f"[exporter] collection failed: {exc}", file=sys.stderr)
+
+        time.sleep(COLLECT_INTERVAL)
+
+
+def get_cached_metrics() -> dict:
+    """Return the most recent snapshot (never blocks on I/O)."""
+    with _cache_lock:
+        if not _cached_metrics:
+            raise RuntimeError("No metrics collected yet — wait for first collection cycle")
+        return dict(_cached_metrics)  # shallow copy so caller can't mutate cache
+
+
 # ---------------------------------------------------------------------------
-# HTTP handler
+# HTTP handler — only reads cached metrics, never blocks
 # ---------------------------------------------------------------------------
 
 
 class MetricsHandler(BaseHTTPRequestHandler):
-    """Single-endpoint HTTP server returning JSON metrics."""
+    """Single-endpoint HTTP server returning JSON metrics from cache."""
 
     def do_GET(self) -> None:
         if self.path != "/metrics/json":
@@ -180,10 +181,10 @@ class MetricsHandler(BaseHTTPRequestHandler):
                 return
 
         try:
-            data = collect()
+            data = get_cached_metrics()
             self._send_json(200, data)
-        except Exception as exc:
-            self._send_json(500, {"error": "collection_failed", "message": str(exc)})
+        except RuntimeError as exc:
+            self._send_json(503, {"error": "not_ready", "message": str(exc)})
 
     def do_HEAD(self) -> None:
         """Health-check via HEAD /metrics/json — returns only headers."""
@@ -215,13 +216,18 @@ class MetricsHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({"error": "unauthorized"}).encode())
 
     def _send_json(self, status: int, data: dict) -> None:
+        """Send JSON response. Silently ignores client-disconnect errors."""
         body = json.dumps(data, indent=2, ensure_ascii=False)
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Cache-Control", "no-cache")
-        self.end_headers()
-        self.wfile.write(body.encode())
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(body.encode())
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # Client disconnected before or while we responded — not our problem.
+            pass
 
     # -- silence default logging (too noisy) -------------------------------
 
@@ -235,6 +241,20 @@ class MetricsHandler(BaseHTTPRequestHandler):
 
 
 def main() -> NoReturn:
+    # Start background collector
+    collector = threading.Thread(target=_collector_loop, daemon=True, name="metrics-collector")
+    collector.start()
+
+    # Wait for the first collection to complete so we don't serve empty data
+    for _ in range(int(COLLECT_INTERVAL * 2 + 5)):
+        with _cache_lock:
+            if _cached_metrics:
+                break
+        time.sleep(0.5)
+    else:
+        print("[exporter] WARNING: first collection not ready after waiting, starting anyway",
+              file=sys.stderr)
+
     server = HTTPServer(("0.0.0.0", PORT), MetricsHandler)
 
     # Graceful shutdown
@@ -248,7 +268,8 @@ def main() -> NoReturn:
 
     print(
         f"[exporter] host={HOSTNAME} listening on 0.0.0.0:{PORT} "
-        f"disk_paths={DISK_PATHS} auth={'yes' if METRICS_USER else 'no'}",
+        f"disk_paths={DISK_PATHS} interval={COLLECT_INTERVAL}s "
+        f"auth={'yes' if METRICS_USER else 'no'}",
         file=sys.stderr,
     )
 
