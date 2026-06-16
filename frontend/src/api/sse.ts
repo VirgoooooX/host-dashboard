@@ -1,3 +1,5 @@
+import { t } from "@/i18n";
+
 export type SseFrame = {
   event: string;
   data: any;
@@ -127,7 +129,7 @@ export async function streamSse(options: StreamSseOptions): Promise<{ timedOut: 
       throw new Error(await readErrorDetail(response));
     }
     if (!response.body) {
-      throw new Error("浏览器不支持流式读取");
+      throw new Error(t("sse.streamNotSupported"));
     }
 
     const reader = response.body.getReader();

@@ -6,19 +6,23 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 
 const props = defineProps<{
   status: string;
 }>();
 
+const { t } = useI18n();
+
 const label = computed(() => {
-  const labels: Record<string, string> = {
-    up_to_date: "最新",
-    updatable: "Update",
-    needs_auth: "需认证",
-    check_failed: "检查失败",
+  const keys: Record<string, string> = {
+    up_to_date: "update.status.upToDate",
+    updatable: "update.status.updatable",
+    needs_auth: "update.status.needsAuth",
+    check_failed: "update.status.checkFailed",
   };
-  return labels[props.status] || props.status;
+  const key = keys[props.status];
+  return key ? t(key as any) : props.status;
 });
 
 const statusClass = computed(() => {
@@ -32,13 +36,14 @@ const statusClass = computed(() => {
 });
 
 const hint = computed(() => {
-  const hints: Record<string, string> = {
-    up_to_date: "镜像已是最新",
-    updatable: "远端镜像 digest 不同，可更新",
-    needs_auth: "Registry 返回认证/授权要求，无法判断是否有更新",
-    check_failed: "镜像检查失败，无法判断是否有更新",
+  const keys: Record<string, string> = {
+    up_to_date: "update.hint.upToDate",
+    updatable: "update.hint.updatable",
+    needs_auth: "update.hint.needsAuth",
+    check_failed: "update.hint.checkFailed",
   };
-  return hints[props.status] || props.status;
+  const key = keys[props.status];
+  return key ? t(key as any) : props.status;
 });
 </script>
 

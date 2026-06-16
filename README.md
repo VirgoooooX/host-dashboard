@@ -1,12 +1,12 @@
-# Docker Dashboard v1
+# Fleetge
 
-多主机 Docker 管理控制台。聚合 Dockge、docker-socket-proxy、host-metrics exporter 三路数据源，提供统一只读监控 + Stack 基础操作。
+多主机 Docker fleet 管理控制台。聚合 Dockge、docker-socket-proxy、host-metrics exporter 三路数据源，提供统一只读监控 + Stack 基础操作。
 
 ## 架构
 
 ```
-用户浏览器 ─HTTPS→ Dashboard Frontend (Vue 3)
-                    ─REST→ Dashboard Backend (FastAPI)
+用户浏览器 ─HTTPS→ Fleetge Frontend (Vue 3)
+                    ─REST→ Fleetge Backend (FastAPI)
                               ├─→ Dockge Socket.IO ─ stack 管理
                               ├─→ docker-socket-proxy ─ Docker 只读状态
                               └─→ host-metrics exporter ─ 主机指标
@@ -61,7 +61,7 @@ hosts:
 docker compose up -d
 ```
 
-Dashboard 将在 `http://<host>:80` 可用。
+Fleetge 将在 `http://<host>:80` 可用。
 
 ### 4. 前置依赖
 

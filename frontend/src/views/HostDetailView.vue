@@ -1,16 +1,16 @@
 <template>
   <div class="detail-layout">
     <section v-if="host?.metrics" class="metrics-bar">
-      <HostMetricsBar label="CPU" :percent="host.metrics.cpuPercent" unit="%" />
+      <HostMetricsBar :label="t('hostCard.cpu')" :percent="host.metrics.cpuPercent" unit="%" />
       <HostMetricsBar
-        label="内存"
+        :label="t('hostDetail.memory')"
         :percent="memPercent"
         :used="host.metrics.memoryUsed"
         :total="host.metrics.memoryTotal"
         unit="GB"
       />
       <HostMetricsBar
-        label="磁盘"
+        :label="t('hostDetail.disk')"
         :percent="diskPercent"
         :used="host.metrics.diskUsed"
         :total="host.metrics.diskTotal"
@@ -18,7 +18,7 @@
       />
       <div class="metrics-item">
         <div class="metrics-header">
-          <span class="metrics-label">负载</span>
+          <span class="metrics-label">{{ t('hostDetail.load') }}</span>
         </div>
         <div class="metrics-value-container">
           <span class="metrics-value font-mono">{{ loadText }}</span>
@@ -26,7 +26,7 @@
       </div>
       <div class="metrics-item">
         <div class="metrics-header">
-          <span class="metrics-label">运行时间</span>
+          <span class="metrics-label">{{ t('hostDetail.uptime') }}</span>
         </div>
         <div class="metrics-value-container">
           <span class="metrics-value">{{ uptimeText }}</span>
@@ -35,7 +35,7 @@
       <div class="metrics-item">
         <div class="metrics-header">
           <span class="activity-dot" :class="netActivityLevel" />
-          <span class="metrics-label">网络</span>
+          <span class="metrics-label">{{ t('hostDetail.network') }}</span>
         </div>
         <div class="metrics-value-container telemetry-lines">
           <div class="telemetry-line">
@@ -57,7 +57,7 @@
       <div class="metrics-item">
         <div class="metrics-header">
           <span class="activity-dot" :class="ioActivityLevel" />
-          <span class="metrics-label">磁盘 I/O</span>
+          <span class="metrics-label">{{ t('hostDetail.diskIO') }}</span>
         </div>
         <div class="metrics-value-container telemetry-lines">
           <div class="telemetry-line">
@@ -79,7 +79,7 @@
     </section>
 
     <!-- No metrics warning -->
-    <el-alert v-else-if="host" title="主机指标不可用" type="warning" show-icon :closable="false" class="metric-warning" />
+    <el-alert v-else-if="host" :title="t('hostDetail.metricsUnavailable')" type="warning" show-icon :closable="false" class="metric-warning" />
 
     <HostStackWorkspace
       v-if="host"
@@ -99,6 +99,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { apiClient } from "@/api/client";
 import {
   useDashboardStore,
@@ -113,6 +114,7 @@ import HostStackWorkspace from "@/components/HostStackWorkspace.vue";
 
 const route = useRoute();
 const dashboardStore = useDashboardStore();
+const { t } = useI18n();
 const hostId = computed(() => route.params.hostId as string);
 
 const loading = ref(true);
@@ -152,10 +154,10 @@ const uptimeText = computed(() => {
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const parts: string[] = [];
-  if (d > 0) parts.push(`${d} 天`);
-  if (h > 0) parts.push(`${h} 小时`);
-  if (m > 0) parts.push(`${m} 分钟`);
-  return parts.join(" ") || "刚刚重启";
+  if (d > 0) parts.push(`${d} ${t('hostDetail.days')}`);
+  if (h > 0) parts.push(`${h} ${t('hostDetail.hours')}`);
+  if (m > 0) parts.push(`${m} ${t('hostDetail.minutes')}`);
+  return parts.join(" ") || t('hostDetail.justRestarted');
 });
 
 const updateStatuses = computed(() => {
@@ -294,8 +296,6 @@ async function fetchDetailCached(options: { skipUpdates?: boolean; silent?: bool
     loading.value = true;
   }
   try {
-    // GET returns instantly from the in-memory cache — no blocking Docker/Dockge calls.
-    // The backend's SSE-driven 10s structure poll keeps the cache fresh.
     const res = await apiClient.get(
       `/api/hosts/${encodeURIComponent(hostId.value)}`
     );
@@ -311,7 +311,6 @@ async function fetchDetailCached(options: { skipUpdates?: boolean; silent?: bool
       dashboardStore.upsertHost(host.value);
     }
 
-    // Update cache
     dashboardStore.setHostDetailCache(requestedHostId, {
       host: host.value,
       stacks: stacks.value,
@@ -324,7 +323,6 @@ async function fetchDetailCached(options: { skipUpdates?: boolean; silent?: bool
 
     if (!options.skipUpdates) {
       const fetchedUpdateResults = await fetchUpdateResults(requestedHostId);
-      // Only update cache's updateResults if still on the same request
       if (requestId === detailRequestSeq.value && requestedHostId === hostId.value) {
         dashboardStore.patchHostDetailUpdateResults(requestedHostId, fetchedUpdateResults);
       }
@@ -365,7 +363,6 @@ async function fetchDetail(options: { skipUpdates?: boolean; silent?: boolean } 
       dashboardStore.upsertHost(host.value);
     }
 
-    // Update cache
     dashboardStore.setHostDetailCache(requestedHostId, {
       host: host.value,
       stacks: stacks.value,
@@ -378,7 +375,6 @@ async function fetchDetail(options: { skipUpdates?: boolean; silent?: boolean } 
 
     if (!options.skipUpdates) {
       const fetchedUpdateResults = await fetchUpdateResults(requestedHostId);
-      // Only update cache's updateResults if still on the same request
       if (requestId === detailRequestSeq.value && requestedHostId === hostId.value) {
         dashboardStore.patchHostDetailUpdateResults(requestedHostId, fetchedUpdateResults);
       }
@@ -498,7 +494,6 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-/* Telemetry lines styles similar to HostCard.vue */
 .telemetry-lines {
   display: flex;
   flex-direction: column;
@@ -541,7 +536,6 @@ onUnmounted(() => {
   text-align: left;
 }
 
-/* Activity dot */
 .activity-dot {
   width: 7px;
   height: 7px;

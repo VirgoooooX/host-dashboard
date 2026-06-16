@@ -1,16 +1,19 @@
 <template>
   <div class="login-page">
     <div class="login-visual">
-      <div class="visual-kicker">Docker Ops Console</div>
-      <h1>Host Dashboard</h1>
-      <p>多主机运行态、镜像更新、Stack 操作和审计日志集中入口。</p>
+      <div class="visual-kicker">{{ t('login.kicker') }}</div>
+      <h1>{{ t('login.title') }}</h1>
+      <p>{{ t('login.subtitle') }}</p>
       <div class="visual-grid" aria-hidden="true">
         <span v-for="n in 18" :key="n" />
       </div>
     </div>
     <div class="login-card">
-      <h2 class="login-title">登录控制台</h2>
-      <p class="login-subtitle">使用管理员账号继续</p>
+      <div class="login-brand-mark" aria-hidden="true">
+        <AppLogo />
+      </div>
+      <h2 class="login-title">{{ t('login.title') }}</h2>
+      <p class="login-subtitle">{{ t('login.subtitle') }}</p>
       <el-form
         ref="formRef"
         :model="form"
@@ -21,7 +24,7 @@
         <el-form-item prop="username">
           <el-input
             v-model="form.username"
-            placeholder="用户名"
+            :placeholder="t('login.username')"
             :prefix-icon="User"
             size="large"
           />
@@ -30,7 +33,7 @@
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="密码"
+            :placeholder="t('login.password')"
             :prefix-icon="Lock"
             show-password
             size="large"
@@ -38,13 +41,14 @@
         </el-form-item>
         <el-form-item>
           <el-button
+            class="ui-button ui-button--primary ui-button--large"
             type="primary"
             :loading="loading"
             style="width: 100%"
             size="large"
             @click="handleLogin"
           >
-          登录
+          {{ t('login.submit') }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -55,13 +59,16 @@
 <script setup lang="ts">
 import { ref, reactive } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { User, Lock } from "@element-plus/icons-vue";
 import type { FormInstance, FormRules } from "element-plus";
+import AppLogo from "@/components/AppLogo.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
+const { t } = useI18n();
 
 const formRef = ref<FormInstance>();
 const loading = ref(false);
@@ -72,8 +79,8 @@ const form = reactive({
 });
 
 const rules: FormRules = {
-  username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
-  password: [{ required: true, message: "请输入密码", trigger: "blur" }],
+  username: [{ required: true, message: t('login.usernameRequired'), trigger: "blur" }],
+  password: [{ required: true, message: t('login.passwordRequired'), trigger: "blur" }],
 };
 
 async function handleLogin() {
@@ -156,6 +163,11 @@ async function handleLogin() {
   border-radius: 8px;
   background: var(--login-card-bg);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+}
+.login-brand-mark {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 18px;
 }
 .login-title {
   font-size: 26px;

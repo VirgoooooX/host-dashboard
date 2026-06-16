@@ -16,17 +16,17 @@
           placement="top"
           effect="dark"
         >
-          <span class="error-badge">
+          <span class="ui-icon-button ui-icon-button--small ui-icon-button--danger error-badge">
             <el-icon :size="14"><Warning /></el-icon>
           </span>
         </el-tooltip>
         <button
           v-if="displayUpdateCount > 0"
-          class="update-action"
+          class="ui-button ui-button--compact ui-button--danger update-action"
           type="button"
           @click.stop="$emit('updates')"
         >
-          {{ displayUpdateCount }} 更新
+          {{ t('hostCard.updates', { count: displayUpdateCount }) }}
         </button>
       </div>
     </div>
@@ -68,30 +68,30 @@
       </div>
     </div>
 
-    <div v-else class="metrics-missing">指标不可用</div>
+    <div v-else class="metrics-missing">{{ t('hostCard.metricsUnavailable') }}</div>
 
     <!-- Footer: container counts / images / version -->
     <div class="card-footer">
-      <div class="docker-stat strong" title="运行容器">
-        <span class="stat-label" aria-label="运行容器">
+      <div class="docker-stat strong" :title="t('hostCard.runningContainers')">
+        <span class="stat-label" :aria-label="t('hostCard.runningContainers')">
           <span class="stat-icon running-dot" />
         </span>
         <strong class="stat-value">{{ host.container_running }}</strong>
       </div>
-      <div class="docker-stat stopped" title="停止容器">
-        <span class="stat-label" aria-label="停止容器">
+      <div class="docker-stat stopped" :title="t('hostCard.stoppedContainers')">
+        <span class="stat-label" :aria-label="t('hostCard.stoppedContainers')">
           <span class="stat-icon stopped-dot" />
         </span>
         <strong class="stat-value">{{ host.container_stopped }}</strong>
       </div>
-      <div class="docker-stat images" title="镜像数量">
-        <span class="stat-label" aria-label="镜像数量">
+      <div class="docker-stat images" :title="t('hostCard.imageCount')">
+        <span class="stat-label" :aria-label="t('hostCard.imageCount')">
           <el-icon :size="13"><Monitor /></el-icon>
         </span>
         <strong class="stat-value">{{ host.image_count }}</strong>
       </div>
       <div class="docker-stat version" :title="`Docker ${host.docker_version || '-'}`">
-        <span class="stat-label docker-mark" aria-label="Docker 版本">
+        <span class="stat-label docker-mark" :aria-label="t('hostCard.dockerVersion')">
           <svg viewBox="0 0 24 18" aria-hidden="true" focusable="false">
             <path
               d="M7.2 6.2h2.1V4.1H7.2v2.1Zm2.7 0H12V4.1H9.9v2.1Zm2.8 0h2.1V4.1h-2.1v2.1ZM9.9 3.5H12V1.4H9.9v2.1Zm-5.5 5h15.7c.9 0 1.7.3 2.4.9-.4 2.2-1.5 4-3.2 5.2-1.6 1.1-3.7 1.7-6.2 1.7H9.2c-3 0-5.2-1.1-6.5-3.2-.7-1.1-1-2.3-.9-3.7.8-.1 1.6-.4 2.6-.9Zm.1-.6h2.1V5.8H4.5v2.1Zm2.7 0h2.1V5.8H7.2v2.1Zm2.7 0H12V5.8H9.9v2.1Zm2.8 0h2.1V5.8h-2.1v2.1Zm2.7 0h2.1V5.8h-2.1v2.1Z"
@@ -106,12 +106,15 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { Monitor, Warning } from "@element-plus/icons-vue";
 import StatusIcon from "./StatusIcon.vue";
 import type { HostSummary } from "@/stores/dashboard";
 
 const props = defineProps<{ host: HostSummary; updateCount?: number }>();
 defineEmits<{ click: []; updates: [] }>();
+
+const { t } = useI18n();
 
 const displayUpdateCount = computed(() => props.updateCount ?? props.host.update_count);
 
@@ -133,8 +136,6 @@ const diskPercent = computed(() => {
   return m.diskTotal > 0 ? Math.round((m.diskUsed / m.diskTotal) * 100) : 0;
 });
 
-// ── Capacity: CPU / memory / disk with progress bars ───────────────────
-
 const capacityMetrics = computed(() => {
   const m = props.host.metrics;
   if (!m) return [];
@@ -142,27 +143,25 @@ const capacityMetrics = computed(() => {
   const cpu = Math.round(m.cpuPercent);
   return [
     {
-      label: "CPU",
+      label: t("hostCard.cpu"),
       percent: cpu,
       value: `${m.cpuPercent.toFixed(1)}%`,
       color: metricColor(cpu),
     },
     {
-      label: "内存",
+      label: t("hostCard.memory"),
       percent: memPercent.value,
       value: `${formatBytes(m.memoryUsed)} / ${formatBytes(m.memoryTotal)}`,
       color: metricColor(memPercent.value),
     },
     {
-      label: "磁盘",
+      label: t("hostCard.disk"),
       percent: diskPercent.value,
       value: `${formatBytes(m.diskUsed)} / ${formatBytes(m.diskTotal)}`,
       color: metricColor(diskPercent.value),
     },
   ];
 });
-
-// ── Telemetry: NET / I/O rates without progress bars ───────────────────
 
 function activityLevel(totalRate: number): string {
   if (totalRate >= 10 * 1024 * 1024) return "busy";
@@ -180,7 +179,7 @@ const telemetry = computed(() => {
 
   return [
     {
-      label: "NET",
+      label: t("hostCard.net"),
       level: activityLevel(netTotal),
       lines: [
         { label: "↓", ...formatRateParts(m.networkRxRate) },
@@ -188,7 +187,7 @@ const telemetry = computed(() => {
       ],
     },
     {
-      label: "I/O",
+      label: t("hostCard.io"),
       level: activityLevel(ioTotal),
       lines: [
         { label: "R", ...formatRateParts(m.diskReadRate) },
@@ -197,8 +196,6 @@ const telemetry = computed(() => {
     },
   ];
 });
-
-// ── Helpers ────────────────────────────────────────────────────────────
 
 function metricColor(pct: number): string {
   if (pct > 80) return "#f56c6c";
@@ -237,7 +234,6 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
 </script>
 
 <style scoped>
-/* ── Card shell ──────────────────────────────────────────── */
 .host-card {
   cursor: pointer;
   min-height: 238px;
@@ -250,7 +246,6 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
   box-shadow: var(--host-card-hover-shadow);
 }
 
-/* ── Header ──────────────────────────────────────────────── */
 .card-header {
   display: flex;
   align-items: center;
@@ -289,23 +284,6 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.update-action {
-  flex: 0 0 auto;
-  height: 26px;
-  border: 1px solid rgba(248, 113, 113, 0.34);
-  border-radius: 6px;
-  background: rgba(127, 29, 29, 0.24);
-  color: var(--danger);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 0 9px;
-}
-.update-action:hover {
-  background: rgba(248, 113, 113, 0.16);
-  border-color: rgba(248, 113, 113, 0.58);
-}
-
 .card-header-right {
   display: flex;
   align-items: center;
@@ -314,19 +292,9 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
 }
 
 .error-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  border: 1px solid rgba(248, 113, 113, 0.34);
-  background: rgba(127, 29, 29, 0.24);
-  color: var(--danger);
   cursor: help;
 }
 
-/* ── Capacity grid (CPU / 内存 / 磁盘) ──────────────────── */
 .capacity-grid {
   display: flex;
   flex-direction: column;
@@ -372,7 +340,6 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
   box-shadow: 0 0 16px color-mix(in srgb, var(--metric-color), transparent 45%);
 }
 
-/* ── Telemetry grid (NET / I/O, text rates only) ────────── */
 .telemetry-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -382,11 +349,12 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
 }
 .telemetry-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(34px, auto) max-content;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  column-gap: 6px;
   min-height: 44px;
-  padding: 8px 10px;
+  padding: 8px;
   border: 1px solid var(--border-subtle);
   border-radius: 7px;
   background: var(--surface-muted);
@@ -394,7 +362,9 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
 .telemetry-label-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  min-width: 0;
+  flex: 0 0 auto;
 }
 .telemetry-label {
   font-size: 12px;
@@ -416,14 +386,15 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
+  min-width: max-content;
+  justify-self: end;
 }
 .telemetry-line {
   display: grid;
-  grid-template-columns: 14px max-content;
+  grid-template-columns: 12px max-content;
   justify-content: end;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
 }
 .tl-label {
   font-family: var(--font-mono);
@@ -434,27 +405,26 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
 }
 .tl-value {
   display: grid;
-  grid-template-columns: 6.5ch 4.4ch;
+  grid-template-columns: 5.8ch 3.8ch;
   justify-content: end;
   align-items: baseline;
   gap: 2px;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-primary);
   white-space: nowrap;
 }
 .tl-amount {
-  min-width: 6.5ch;
+  min-width: 5.8ch;
   text-align: right;
 }
 .tl-unit {
-  min-width: 4.4ch;
+  min-width: 3.8ch;
   color: var(--text-secondary);
   text-align: left;
 }
 
-/* ── Missing metrics placeholder ─────────────────────────── */
 .metrics-missing {
   min-height: 102px;
   display: grid;
@@ -466,7 +436,6 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
   margin-bottom: 14px;
 }
 
-/* ── Footer ──────────────────────────────────────────────── */
 .card-footer {
   display: grid;
   grid-template-columns: 0.8fr 0.8fr 0.8fr 1.6fr;
@@ -541,7 +510,6 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
 .running-dot { background: var(--el-color-success); }
 .stopped-dot { background: var(--el-color-danger); }
 
-/* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 420px) {
   .telemetry-grid {
     grid-template-columns: 1fr;

@@ -20,7 +20,7 @@
         </div>
         <div class="stack-header-right">
           <span class="stack-service-count">
-            {{ stack.running_count }} / {{ stack.service_count }} 运行
+            {{ t('stackGroup.running', { running: stack.running_count, total: stack.service_count }) }}
           </span>
           <StackActions
             :host-id="hostId"
@@ -31,19 +31,19 @@
             @operation-complete="onOperationComplete(stack.name, $event)"
           />
           <el-button
-            class="stack-compose-button"
+            class="ui-button ui-button--compact"
             size="small"
-            aria-label="编辑 Compose"
+            :aria-label="t('stackGroup.editCompose')"
             @click="openCompose(stack.name)"
           >
             <el-icon><EditPen /></el-icon>
             Compose
           </el-button>
-          <el-tooltip content="查看日志" placement="top">
+          <el-tooltip :content="t('stackGroup.viewLogs')" placement="top">
             <el-button
-              class="stack-icon-button"
+              class="ui-icon-button ui-icon-button--small"
               size="small"
-              aria-label="查看日志"
+              :aria-label="t('stackGroup.viewLogs')"
               @click="openLogs(stack.name)"
             >
               <el-icon><Document /></el-icon>
@@ -78,7 +78,7 @@
           type="warning"
           @click="showLogTail(stack.name)"
         >
-          查看输出
+          {{ t('stackGroup.viewOutput') }}
         </el-button>
       </div>
 
@@ -110,7 +110,7 @@
   <!-- Legacy log-tail dialog (non-streaming fallback) -->
   <el-dialog
     v-model="logTailVisible"
-    :title="`Terminal 输出 — ${currentTailStack}`"
+        :title="t('stackGroup.terminalTitle', { name: currentTailStack })"
     width="80%"
   >
     <pre class="log-tail-content">{{ currentTailContent }}</pre>
@@ -137,6 +137,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from "vue";
+import { useI18n } from "vue-i18n";
 import { FolderOpened, Document, EditPen, Loading, SuccessFilled, WarningFilled, Clock } from "@element-plus/icons-vue";
 import StatusIcon from "./StatusIcon.vue";
 import StackActions from "./StackActions.vue";
@@ -168,6 +169,8 @@ const props = defineProps<{
 }>();
 
 defineEmits<{ refresh: [] }>();
+
+const { t } = useI18n();
 
 // ── Terminal / streaming state ──────────────────────────────────
 
@@ -424,42 +427,6 @@ function openCompose(stackName: string) {
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-all;
-}
-
-.stack-compose-button,
-.stack-icon-button {
-  height: 28px;
-  min-height: 28px;
-  margin-left: 0 !important;
-  border: 1px solid var(--border-subtle) !important;
-  border-radius: 7px !important;
-  background: var(--stack-action-bg, rgba(148, 163, 184, 0.08)) !important;
-  color: var(--stack-action-color, var(--text-secondary)) !important;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.stack-compose-button {
-  padding: 0 8px !important;
-}
-
-.stack-icon-button {
-  width: 28px;
-  padding: 0 !important;
-}
-
-.stack-compose-button :deep(.el-icon),
-.stack-icon-button :deep(.el-icon) {
-  font-size: 14px;
-}
-
-.stack-compose-button:hover,
-.stack-compose-button:focus-visible,
-.stack-icon-button:hover,
-.stack-icon-button:focus-visible {
-  border-color: var(--accent-blue) !important;
-  background: var(--stack-action-hover-bg, rgba(96, 165, 250, 0.14)) !important;
-  color: var(--accent-blue) !important;
 }
 
 .stack-header :deep(.el-button) {

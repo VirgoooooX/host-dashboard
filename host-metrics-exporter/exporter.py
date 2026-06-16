@@ -2,7 +2,7 @@
 """
 host-metrics-exporter
 
-Minimal read-only HTTP metrics exporter for Docker Dashboard.
+Minimal read-only HTTP metrics exporter for Fleetge.
 One endpoint: GET /metrics/json → host CPU/memory/disk/network/load/uptime.
 
 Environment:

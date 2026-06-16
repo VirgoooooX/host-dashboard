@@ -2,14 +2,16 @@
   <div class="ops-shell">
     <aside class="ops-sidebar">
       <div class="ops-brand" @click="router.push('/')">
-        <div class="ops-brand-mark">HD</div>
+        <div class="ops-brand-mark">
+          <AppLogo />
+        </div>
         <div>
-          <div class="ops-brand-title">Host Dashboard</div>
-          <div class="ops-brand-subtitle">Docker Ops Console</div>
+          <div class="ops-brand-title">{{ t('brand.name') }}</div>
+          <div class="ops-brand-subtitle">{{ t('brand.subtitle') }}</div>
         </div>
       </div>
 
-      <nav class="ops-nav" aria-label="主导航">
+      <nav class="ops-nav" :aria-label="t('nav.hostsSection')">
         <button
           v-for="item in navItems"
           :key="item.id"
@@ -31,7 +33,7 @@
       </nav>
 
       <div class="ops-host-list">
-        <div class="ops-section-label">Hosts</div>
+        <div class="ops-section-label">{{ t('nav.hostsSection') }}</div>
         <button
           v-for="host in store.hosts"
           :key="host.host_id"
@@ -52,7 +54,7 @@
     <div class="ops-main">
       <header class="ops-topbar">
         <div class="ops-topbar-left">
-          <div class="ops-topbar-kicker">Operations</div>
+          <div class="ops-topbar-kicker">{{ t('shell.kicker') }}</div>
           <div class="ops-topbar-title-row">
             <h1 class="ops-topbar-title">{{ pageTitle }}</h1>
             <div v-if="currentHost" class="ops-host-tags">
@@ -71,30 +73,38 @@
         <div class="ops-topbar-right">
           <div class="ops-control ops-status-pill">
             <span class="ops-health-dot" />
-            {{ store.onlineCount }}/{{ store.hosts.length }} 在线
+            {{ t('shell.onlineCount', { online: store.onlineCount, total: store.hosts.length }) }}
           </div>
           <div class="ops-control ops-status-pill warning" v-if="store.updateCount > 0">
-            {{ store.updateCount }} 更新
+            {{ t('shell.updateCount', { count: store.updateCount }) }}
           </div>
           <el-button
-            class="ops-control ops-icon-button"
+            class="ops-control ui-icon-button"
+            size="small"
+            aria-label="EN/中"
+            @click="switchLocale"
+          >
+            {{ localeLabel }}
+          </el-button>
+          <el-button
+            class="ops-control ui-icon-button"
             size="small"
             :icon="themeIcon"
-            :aria-label="theme.current.value === 'dark' ? '切换浅色模式' : '切换深色模式'"
+            :aria-label="theme.current.value === 'dark' ? t('shell.switchLight') : t('shell.switchDark')"
             @click="theme.toggle()"
           />
           <el-button
-            class="ops-control ops-action-button"
+            class="ops-control ui-button ui-button--compact"
             size="small"
             :loading="store.manualLoading"
             @click="store.refreshAll"
           >
             <el-icon><Refresh /></el-icon>
-            刷新
+            {{ t('shell.refresh') }}
           </el-button>
-          <el-button class="ops-control ops-action-button muted" size="small" @click="logout">
+          <el-button class="ops-control ui-button ui-button--compact ui-button--muted" size="small" @click="logout">
             <el-icon><SwitchButton /></el-icon>
-            退出
+            {{ t('shell.logout') }}
           </el-button>
         </div>
       </header>
@@ -109,6 +119,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import {
   Collection,
   House,
@@ -119,18 +130,32 @@ import {
   SwitchButton,
   Warning,
 } from "@element-plus/icons-vue";
+import AppLogo from "@/components/AppLogo.vue";
 import StatusIcon from "@/components/StatusIcon.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useDashboardStore } from "@/stores/dashboard";
 import { useTheme } from "@/composables/useTheme";
+import { getOppositeLocale, setStoredLocale } from "@/i18n";
+import type { Locale } from "@/i18n";
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const store = useDashboardStore();
 const theme = useTheme();
+const { t, locale } = useI18n();
 
 const themeIcon = computed(() => (theme.current.value === "dark" ? Sunny : Moon));
+
+const localeLabel = computed(() =>
+  locale.value === "zh-CN" ? "EN" : "中"
+);
+
+function switchLocale() {
+  const next = getOppositeLocale(locale.value as Locale);
+  locale.value = next;
+  setStoredLocale(next);
+}
 
 const hostBadgeTone = computed(() => {
   if (store.hosts.length === 0) return "neutral";
@@ -145,19 +170,19 @@ const currentHost = computed(() => {
 });
 
 const navItems = computed(() => [
-  { id: "dashboard", label: "Dashboard", path: "/", icon: House, badge: null },
+  { id: "dashboard", label: t("nav.dashboard"), path: "/", icon: House, badge: null },
   {
     id: "updates",
-    label: "Updates",
+    label: t("nav.updates"),
     path: "/updates",
     icon: Warning,
     badge: store.updateCount,
     badgeTone: "danger",
   },
-  { id: "audit", label: "Audit", path: "/audit", icon: List, badge: null },
+  { id: "audit", label: t("nav.audit"), path: "/audit", icon: List, badge: null },
   {
     id: "hosts",
-    label: "Hosts",
+    label: t("nav.hosts"),
     path: "/",
     icon: Collection,
     badge: store.hosts.length,
@@ -169,9 +194,9 @@ const pageTitle = computed(() => {
   if (route.name === "host-detail") {
     return currentHost.value?.display_name || String(route.params.hostId || "Host");
   }
-  if (route.name === "updates") return "镜像更新";
-  if (route.name === "audit") return "操作审计";
-  return "Dashboard";
+  if (route.name === "updates") return t("nav.updates");
+  if (route.name === "audit") return t("nav.audit");
+  return t("nav.dashboard");
 });
 
 onMounted(() => {
@@ -218,37 +243,43 @@ function logout() {
 .ops-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 8px 14px;
+  justify-content: center;
+  gap: 12px;
+  min-height: 88px;
+  padding: 8px 8px 10px;
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
 }
 
 .ops-brand-mark {
-  width: 36px;
-  height: 36px;
+  width: 66px;
+  height: 66px;
+  flex: 0 0 66px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(96, 165, 250, 0.5);
-  border-radius: 8px;
-  background: var(--sidebar-brand-bg);
-  color: var(--accent-blue);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .ops-brand-title {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 25px;
+  line-height: 0.98;
+  font-weight: 800;
 }
 
-.ops-brand-subtitle,
 .ops-section-label,
 .ops-topbar-kicker {
   color: var(--text-muted);
   font-size: 11px;
   letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ops-brand-subtitle {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.095em;
+  line-height: 1.15;
   text-transform: uppercase;
 }
 
@@ -440,32 +471,6 @@ function logout() {
   color: var(--danger);
 }
 
-.ops-icon-button,
-.ops-action-button {
-  margin-left: 0 !important;
-}
-
-.ops-icon-button {
-  width: 30px;
-  padding: 0 !important;
-}
-
-.ops-action-button {
-  min-width: 64px;
-  padding: 0 10px !important;
-}
-
-.ops-action-button.muted {
-  color: var(--text-muted);
-}
-
-.ops-action-button:hover,
-.ops-icon-button:hover {
-  border-color: var(--border-strong) !important;
-  background: var(--nav-hover-bg) !important;
-  color: var(--text-primary) !important;
-}
-
 .ops-health-dot {
   width: 7px;
   height: 7px;
@@ -500,7 +505,8 @@ function logout() {
   }
 
   .ops-brand {
-    padding-bottom: 10px;
+    min-height: 74px;
+    padding: 7px 8px 9px;
   }
 
   .ops-nav,

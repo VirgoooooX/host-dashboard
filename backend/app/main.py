@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown."""
     # ── Startup ────────────────────────────────────────────────────
-    logger.info("Starting Docker Dashboard backend")
+    logger.info("Starting Fleetge backend")
 
     # Load host configs from YAML
     load_hosts_from_yaml()
@@ -38,14 +38,14 @@ async def lifespan(app: FastAPI):
     yield
 
     # ── Shutdown ───────────────────────────────────────────────────
-    logger.info("Shutting down Docker Dashboard backend")
+    logger.info("Shutting down Fleetge backend")
     await snapshot_manager.stop()
 
 
 # Create app
 settings = get_settings()
 app = FastAPI(
-    title="Docker Dashboard API",
+    title="Fleetge API",
     version="0.1.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -91,7 +91,7 @@ app.mount("/api/static/icons", StaticFiles(directory=str(_STACK_ICONS_DIR)), nam
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "docker-dashboard"}
+    return {"status": "ok", "service": "fleetge"}
 
 
 # ── Serve static frontend (optional, nginx frontend preferred) ─────────
@@ -99,4 +99,4 @@ async def health():
 
 @app.get("/")
 async def root():
-    return {"message": "Docker Dashboard API — see /api/docs for Swagger"}
+    return {"message": "Fleetge API — see /api/docs for Swagger"}

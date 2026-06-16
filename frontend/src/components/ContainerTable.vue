@@ -1,7 +1,7 @@
 <template>
   <div class="container-table-panel">
     <el-table :data="containers" stripe style="width: 100%" size="small">
-      <el-table-column label="名称" prop="name" min-width="200">
+      <el-table-column :label="t('containerTable.name')" prop="name" min-width="200">
         <template #default="{ row }">
           <div class="container-name">
             <StatusIcon :status="row.state === 'running' ? 'online' : 'offline'" />
@@ -9,7 +9,7 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="镜像" prop="image" min-width="260">
+      <el-table-column :label="t('containerTable.image')" prop="image" min-width="260">
         <template #default="{ row }">
           <div class="image-cell">
             <code class="image-ref">{{ row.image }}</code>
@@ -20,14 +20,14 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="状态" prop="state" width="100">
+      <el-table-column :label="t('containerTable.status')" prop="state" width="100">
         <template #default="{ row }">
           <el-tag :type="row.state === 'running' ? 'success' : 'info'" size="small">
             {{ row.state }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="端口" width="150">
+      <el-table-column :label="t('containerTable.ports')" width="150">
         <template #default="{ row }">
           <span class="port-text" v-if="row.ports && row.ports.length > 0">
             {{ formatPorts(row.ports) }}
@@ -35,12 +35,12 @@
           <span v-else class="port-none">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="已创建" width="140">
+      <el-table-column :label="t('containerTable.created')" width="140">
         <template #default="{ row }">
           {{ formatTime(row.created) }}
         </template>
       </el-table-column>
-      <el-table-column label="资源" width="210">
+      <el-table-column :label="t('containerTable.resources')" width="210">
         <template #default="{ row }">
           <ContainerStats
             v-if="row.state === 'running' && containerStats?.[row.id]"
@@ -54,6 +54,7 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import StatusIcon from "./StatusIcon.vue";
 import ContainerStats from "./ContainerStats.vue";
 import UpdateBadge from "./UpdateBadge.vue";
@@ -94,6 +95,8 @@ defineProps<{
   updateStatuses?: Record<string, string>;
 }>();
 
+const { t, locale } = useI18n();
+
 function formatPorts(ports: ContainerPort[]): string {
   return ports
     .map((p) => (p.public_port ? `${p.public_port}:${p.private_port}` : `${p.private_port}`))
@@ -102,8 +105,9 @@ function formatPorts(ports: ContainerPort[]): string {
 
 function formatTime(created: number): string {
   const d = new Date(created * 1000);
-  const months = d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
-  const time = d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  const loc = locale.value;
+  const months = d.toLocaleDateString(loc, { month: "2-digit", day: "2-digit" });
+  const time = d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" });
   return `${months} ${time}`;
 }
 </script>

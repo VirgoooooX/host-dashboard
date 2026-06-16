@@ -13,10 +13,10 @@
           <el-icon v-else-if="status === 'error'"><WarningFilled /></el-icon>
           {{ statusLabel }}
         </span>
-        <el-button v-if="lines.length > 0" size="small" text @click.stop="copyOutput">
-          {{ copied ? "已复制" : "复制" }}
+        <el-button v-if="lines.length > 0" class="ui-button ui-button--compact" size="small" text @click.stop="copyOutput">
+          {{ copied ? t("stackOp.copied") : t("stackOp.copy") }}
         </el-button>
-        <el-button size="small" text aria-label="关闭操作输出" @click.stop="$emit('close')">
+        <el-button class="ui-icon-button ui-icon-button--small" size="small" text :aria-label="t('compose.close')" @click.stop="$emit('close')">
           <el-icon><Close /></el-icon>
         </el-button>
       </div>
@@ -29,6 +29,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
+import { useI18n } from "vue-i18n";
 import { Close, SuccessFilled, WarningFilled } from "@element-plus/icons-vue";
 import { Terminal as XtermTerminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -47,6 +48,8 @@ const props = withDefaults(defineProps<{
 });
 
 defineEmits<{ close: [] }>();
+
+const { t } = useI18n();
 
 const terminalRef = ref<HTMLElement | null>(null);
 const copied = ref(false);
@@ -83,19 +86,20 @@ const lightTerminalTheme: ITheme = {
 };
 
 const actionTitle = computed(() => {
-  const labels: Record<string, string> = {
-    start: "Starting",
-    stop: "Stopping",
-    restart: "Restarting",
-    update: "Updating",
+  const keys: Record<string, string> = {
+    start: "stackOp.starting",
+    stop: "stackOp.stopping",
+    restart: "stackOp.restarting",
+    update: "stackOp.updating",
   };
-  return labels[props.action] || "Operation";
+  const key = keys[props.action];
+  return key ? t(key as any) : t("stackOp.operation");
 });
 
 const statusLabel = computed(() => {
-  if (props.status === "success") return "完成";
-  if (props.status === "error") return "失败";
-  if (props.status === "idle") return "结束";
+  if (props.status === "success") return t("stackOp.completed");
+  if (props.status === "error") return t("stackOp.failed");
+  if (props.status === "idle") return t("stackOp.finished");
   return "";
 });
 
@@ -181,7 +185,7 @@ function flushLines(force = false) {
   if (force && props.lines.length === 0) {
     renderedSignature = "__waiting__";
     terminal.clear();
-    terminal.write("\x1b[2mWaiting for Dockge output...\x1b[0m\r\n");
+    terminal.write("\x1b[2m" + t("stackOp.waitingOutput") + "\x1b[0m\r\n");
     return;
   }
 
@@ -287,7 +291,7 @@ async function copyOutput() {
       copied.value = false;
     }, 1800);
   } catch {
-    ElMessage.warning("复制失败");
+    ElMessage.warning(t("stackOp.copyFailed"));
   }
 }
 </script>
@@ -380,16 +384,6 @@ async function copyOutput() {
 
 .terminal-tools {
   gap: 10px;
-}
-
-.terminal-tools :deep(.el-button) {
-  min-height: 26px;
-  padding: 0 2px !important;
-  color: #8aa0b7 !important;
-}
-
-:global([data-theme="light"] .terminal-tools) :deep(.el-button) {
-  color: #64748b !important;
 }
 
 .terminal-state {

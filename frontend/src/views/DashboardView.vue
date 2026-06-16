@@ -2,30 +2,30 @@
   <div class="dashboard-layout">
     <section class="command-strip">
       <div class="command-copy">
-        <div class="section-kicker">Fleet Health</div>
-        <h2>多主机运行态</h2>
-        <p>按在线状态、容器运行数和镜像更新优先排序，异常项保持在首屏可见。</p>
+        <div class="ui-section-kicker">{{ t('dashboard.kicker') }}</div>
+        <h2>{{ t('dashboard.title') }}</h2>
+        <p>{{ t('dashboard.description') }}</p>
       </div>
       <div class="summary-grid">
         <div class="summary-tile">
-          <span class="summary-label">在线主机</span>
+          <span class="summary-label">{{ t('dashboard.onlineHosts') }}</span>
           <strong>{{ store.onlineCount }}</strong>
           <small>/ {{ store.hosts.length }}</small>
         </div>
         <div class="summary-tile">
-          <span class="summary-label">运行容器</span>
+          <span class="summary-label">{{ t('dashboard.runningContainers') }}</span>
           <strong>{{ store.runningContainers }}</strong>
-          <small>running</small>
+          <small>{{ t('dashboard.running') }}</small>
         </div>
         <div class="summary-tile">
-          <span class="summary-label">停止容器</span>
+          <span class="summary-label">{{ t('dashboard.stoppedContainers') }}</span>
           <strong>{{ stoppedContainers }}</strong>
-          <small>stopped</small>
+          <small>{{ t('dashboard.stopped') }}</small>
         </div>
         <button class="summary-tile critical" type="button" @click="router.push('/updates')">
-          <span class="summary-label">可更新镜像</span>
+          <span class="summary-label">{{ t('dashboard.updatableImages') }}</span>
           <strong>{{ store.updateCount }}</strong>
-          <small>updates</small>
+          <small>{{ t('dashboard.updates') }}</small>
         </button>
       </div>
     </section>
@@ -39,7 +39,7 @@
       class="error-alert"
     />
 
-    <main class="host-grid" aria-label="主机状态矩阵">
+    <main class="host-grid" :aria-label="t('dashboard.title')">
       <HostCard
         v-for="host in sortedHosts"
         :key="host.host_id"
@@ -52,7 +52,7 @@
 
     <el-empty
       v-if="!store.loading && store.hosts.length === 0"
-      description="暂无主机配置"
+      :description="t('dashboard.noHosts')"
     />
   </div>
 </template>
@@ -60,11 +60,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useDashboardStore } from "@/stores/dashboard";
 import HostCard from "@/components/HostCard.vue";
 
 const router = useRouter();
 const store = useDashboardStore();
+const { t } = useI18n();
 
 const stoppedContainers = computed(() =>
   store.hosts.reduce((sum, host) => sum + host.container_stopped, 0)
@@ -97,14 +99,6 @@ function goToHost(hostId: string) {
   border-radius: 8px;
   background: var(--dash-command-bg);
   padding: 18px;
-}
-
-.section-kicker {
-  color: var(--accent-blue);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 .command-copy h2 {

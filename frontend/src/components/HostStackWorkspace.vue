@@ -2,17 +2,17 @@
   <section class="host-workspace">
     <aside class="workspace-sidebar">
       <div class="sidebar-compose-row">
-        <el-tooltip content="新增 Stack" placement="top">
-          <button class="compose-add-button" type="button" @click="openNewCompose">
+        <el-tooltip :content="t('workspace.newStack')" placement="top">
+          <button class="ui-button ui-button--primary compose-add-button" type="button" @click="openNewCompose">
             <el-icon><Plus /></el-icon>
             Compose
           </button>
         </el-tooltip>
-        <el-tooltip content="重新检查镜像更新" placement="top">
+        <el-tooltip :content="t('workspace.recheckUpdates')" placement="top">
           <el-button
-            class="sidebar-icon-button"
+            class="ui-icon-button sidebar-icon-button"
             :loading="updateLoading"
-            aria-label="重新检查镜像更新"
+            :aria-label="t('workspace.recheckUpdates')"
             @click="$emit('check-updates')"
           >
             <el-icon v-if="!updateLoading"><Refresh /></el-icon>
@@ -22,11 +22,11 @@
 
       <div class="sidebar-search">
         <el-icon><Search /></el-icon>
-        <input v-model="stackSearch" type="search" placeholder="Search stacks" />
+        <input v-model="stackSearch" type="search" :placeholder="t('workspace.searchPlaceholder')" />
       </div>
 
       <template v-if="structureLoading">
-        <div class="sidebar-loading">正在加载 Docker / Dockge 结构...</div>
+        <div class="sidebar-loading">{{ t('workspace.loadingStructure') }}</div>
       </template>
       <template v-else>
         <button
@@ -35,7 +35,7 @@
           type="button"
           @click="showAllStacks"
         >
-          <span>All Stacks</span>
+          <span>{{ t('workspace.allStacks') }}</span>
           <span class="nav-count">{{ filteredStacks.length }}</span>
         </button>
 
@@ -75,12 +75,12 @@
       <div v-if="!selectedStack" class="all-stacks-view">
         <div class="workspace-headline">
           <div>
-            <div class="workspace-kicker">Stacks</div>
-            <h3>全部 Stacks</h3>
+            <div class="workspace-kicker">{{ t('workspace.stacksKicker') }}</div>
+            <h3>{{ t('workspace.allStacksTitle') }}</h3>
           </div>
           <div class="workspace-summary">
-            <span>{{ stacks.length }} stacks</span>
-            <span>{{ runningStackCount }} running</span>
+            <span>{{ t('workspace.stacksCount', { count: stacks.length }) }}</span>
+            <span>{{ t('workspace.runningCount', { count: runningStackCount }) }}</span>
           </div>
         </div>
 
@@ -105,7 +105,7 @@
               </div>
               <div class="stack-card-actions" @click.stop>
                 <span class="stack-running-count">
-                  {{ stack.running_count }} / {{ stack.service_count }} 运行
+                  {{ t('workspace.running', { running: stack.running_count, total: stack.service_count }) }}
                 </span>
                 <StackActions
                   :host-id="hostId"
@@ -115,9 +115,9 @@
                   @terminal-line="onTerminalLine(stack.name, $event)"
                   @operation-complete="onOperationComplete(stack.name, $event)"
                 />
-                <el-tooltip content="编辑 Compose" placement="top">
+                <el-tooltip :content="t('workspace.editCompose')" placement="top">
                   <el-button
-                    class="compact-action-button wide"
+                    class="ui-button ui-button--compact compact-action-button wide"
                     size="small"
                     @click="openCompose(stack.name)"
                   >
@@ -125,11 +125,11 @@
                     Compose
                   </el-button>
                 </el-tooltip>
-                <el-tooltip content="查看详情" placement="top">
+                <el-tooltip :content="t('workspace.viewDetail')" placement="top">
                   <el-button
-                    class="compact-action-button"
+                    class="ui-icon-button ui-icon-button--small compact-action-button"
                     size="small"
-                    aria-label="查看详情"
+                    :aria-label="t('workspace.viewDetail')"
                     @click="selectStack(stack.name)"
                   >
                     <el-icon><Document /></el-icon>
@@ -171,7 +171,7 @@
           </article>
         </div>
 
-        <el-empty v-else-if="!structureLoading" description="没有匹配的 Stack" />
+        <el-empty v-else-if="!structureLoading" :description="t('workspace.noMatchingStack')" />
       </div>
 
       <div v-else class="stack-detail-view">
@@ -204,7 +204,7 @@
               @terminal-line="onTerminalLine(selectedStack.name, $event)"
               @operation-complete="onOperationComplete(selectedStack.name, $event)"
             />
-            <el-button class="detail-compose-button" @click="openCompose(selectedStack.name)">
+            <el-button class="ui-button detail-compose-button" @click="openCompose(selectedStack.name)">
               <el-icon><EditPen /></el-icon>
               Compose
             </el-button>
@@ -226,8 +226,8 @@
           <div class="detail-left-column">
             <section class="workspace-section">
               <div class="section-heading">
-                <h3>容器组</h3>
-                <span>{{ selectedStackContainers.length }} containers</span>
+                <h3>{{ t('workspace.containerGroup') }}</h3>
+                <span>{{ t('workspace.containers', { count: selectedStackContainers.length }) }}</span>
               </div>
               <div class="container-group">
                 <button
@@ -244,34 +244,38 @@
                     <span class="container-meta">{{ container.image }}</span>
                   </div>
                   <span class="container-status">{{ container.status || container.state }}</span>
-                  <span v-if="formatPorts(container.ports)" class="container-port">
-                    {{ formatPorts(container.ports) }}
+                  <span
+                    v-if="formatPorts(container.ports)"
+                    class="container-port"
+                    :title="formatPorts(container.ports)"
+                  >
+                    {{ formatPortsPreview(container.ports) }}
                   </span>
                   <UpdateBadge
                     v-if="containerUpdateStatus(container)"
                     :status="containerUpdateStatus(container)!"
                   />
                 </button>
-                <el-empty v-if="selectedStackContainers.length === 0" description="暂无容器" />
+                <el-empty v-if="selectedStackContainers.length === 0" :description="t('workspace.noContainers')" />
               </div>
             </section>
 
             <section class="workspace-section terminal-section">
               <div class="section-heading">
-                <h3>终端</h3>
+                <h3>{{ t('workspace.terminal') }}</h3>
                 <div class="terminal-tools">
-                  <el-button size="small" text :loading="logsLoading" @click="loadLogs">
+                  <el-button class="ui-button ui-button--compact" size="small" text :loading="logsLoading" @click="loadLogs">
                     <el-icon><Refresh /></el-icon>
-                    刷新
+                    {{ t('workspace.refresh') }}
                   </el-button>
                 </div>
               </div>
               <div class="embedded-terminal" ref="logViewportRef">
                 <div v-if="logsLoading && logLines.length === 0" class="terminal-muted">
-                  正在加载日志...
+                  {{ t('workspace.loadingLogs') }}
                 </div>
                 <div v-else-if="logLines.length === 0" class="terminal-muted">
-                  暂无日志
+                  {{ t('workspace.noLogs') }}
                 </div>
                 <div
                   v-for="(line, index) in logLines"
@@ -291,143 +295,388 @@
             <div class="panel-header">
               <div>
                 <div class="workspace-kicker">
-                  {{ selectedContainer ? 'Container Detail' : 'Compose Preview' }}
+                  {{ selectedContainer ? t('workspace.containerDetail') : t('workspace.composePreview') }}
                 </div>
-                <h3>{{ selectedContainer ? (selectedContainer.service_name || selectedContainer.name) : composeFileName }}</h3>
+                <div class="panel-header-title-row">
+                  <h3>{{ selectedContainer ? (selectedContainer.service_name || selectedContainer.name) : composeFileName }}</h3>
+                  <span v-if="selectedContainer" class="status-badge" :class="selectedContainer.state">
+                    <span class="status-badge-dot" />
+                    <span class="status-badge-text">{{ selectedContainer.status || selectedContainer.state }}</span>
+                  </span>
+                </div>
               </div>
               <el-button
                 v-if="selectedContainer"
+                class="ui-button ui-button--compact"
                 size="small"
                 text
                 @click="selectedContainerId = ''"
               >
-                显示 Compose
+                {{ t('workspace.showCompose') }}
               </el-button>
             </div>
 
             <div v-if="selectedContainer" class="container-detail-panel">
-              <div class="detail-fields-grid">
-                <div class="detail-field">
-                  <span>ID</span>
-                  <code>{{ selectedContainer.id }}</code>
+              <!-- Stats Dashboard -->
+              <div class="stats-dashboard">
+                <div class="stat-card cpu" :class="cpuLevel">
+                  <div class="stat-card-head">
+                    <el-icon><Cpu /></el-icon>
+                    <span>CPU</span>
+                  </div>
+                  <div class="stat-card-body">
+                    <span class="stat-card-value">
+                      {{ selectedContainerStats?.cpu_percent.toFixed(1) ?? '-' }}<small>%</small>
+                    </span>
+                  </div>
+                  <el-progress
+                    v-if="selectedContainerStats"
+                    :percentage="Math.min(selectedContainerStats.cpu_percent, 100)"
+                    :stroke-width="4"
+                    :show-text="false"
+                    :color="cpuColor"
+                  />
+                  <span v-else class="stat-na">-</span>
                 </div>
-                <div class="detail-field">
-                  <span>状态</span>
-                  <strong>{{ selectedContainer.status || selectedContainer.state }}</strong>
+
+                <div class="stat-card mem" :class="memLevel">
+                  <div class="stat-card-head">
+                    <el-icon><Monitor /></el-icon>
+                    <span>MEM</span>
+                  </div>
+                  <div class="stat-card-body">
+                    <span class="stat-card-value">
+                      {{ selectedContainerStats?.memory_percent.toFixed(1) ?? '-' }}<small>%</small>
+                    </span>
+                    <span class="stat-card-sub" v-if="selectedContainerStats">
+                      {{ formatBytes(selectedContainerStats.memory_usage) }}
+                    </span>
+                  </div>
+                  <el-progress
+                    v-if="selectedContainerStats"
+                    :percentage="Math.min(selectedContainerStats.memory_percent, 100)"
+                    :stroke-width="4"
+                    :show-text="false"
+                    :color="memColor"
+                  />
+                  <span v-else class="stat-na">-</span>
                 </div>
-                <div class="detail-field">
-                  <span>镜像</span>
-                  <code>{{ selectedContainer.image }}</code>
+
+                <div class="stat-card rx">
+                  <div class="stat-card-head">
+                    <el-icon><Download /></el-icon>
+                    <span>RX</span>
+                  </div>
+                  <div class="stat-card-body">
+                    <span class="stat-card-value net-val">
+                      {{ selectedContainerStats ? formatBytes(selectedContainerStats.network_rx_bytes) : '-' }}
+                    </span>
+                  </div>
+                  <div class="stat-card-bar-spacer" />
                 </div>
-                <div class="detail-field">
-                  <span>端口</span>
-                  <strong>{{ formatPorts(selectedContainer.ports) || '-' }}</strong>
+
+                <div class="stat-card tx">
+                  <div class="stat-card-head">
+                    <el-icon><Top /></el-icon>
+                    <span>TX</span>
+                  </div>
+                  <div class="stat-card-body">
+                    <span class="stat-card-value net-val">
+                      {{ selectedContainerStats ? formatBytes(selectedContainerStats.network_tx_bytes) : '-' }}
+                    </span>
+                  </div>
+                  <div class="stat-card-bar-spacer" />
                 </div>
               </div>
 
-              <div v-if="selectedContainerStats" class="detail-stats-grid">
-                <div>
-                  <span>CPU</span>
-                  <strong>{{ selectedContainerStats.cpu_percent.toFixed(1) }}%</strong>
-                </div>
-                <div>
-                  <span>Memory</span>
-                  <strong>{{ selectedContainerStats.memory_percent.toFixed(1) }}%</strong>
-                </div>
-                <div>
-                  <span>RX</span>
-                  <strong>{{ formatBytes(selectedContainerStats.network_rx_bytes) }}</strong>
-                </div>
-                <div>
-                  <span>TX</span>
-                  <strong>{{ formatBytes(selectedContainerStats.network_tx_bytes) }}</strong>
-                </div>
-              </div>
-
-              <div class="detail-section-group">
-                <div class="detail-section-title">Runtime</div>
-                <div class="detail-fields-grid compact">
-                  <div class="detail-field">
-                    <span>Restart</span>
-                    <strong>{{ formatRestartPolicy(selectedContainer.restart_policy) }}</strong>
+              <!-- Basic Info List Card -->
+              <div class="info-card-list">
+                <!-- Image Row -->
+                <div class="info-row image-row">
+                  <div class="info-row-left">
+                    <el-icon><Collection /></el-icon>
+                    <span class="info-row-label">{{ t('workspace.containerImage') }}</span>
                   </div>
-                  <div class="detail-field">
-                    <span>Restarts</span>
-                    <strong>{{ selectedContainer.restart_count ?? 0 }}</strong>
-                  </div>
-                  <div class="detail-field">
-                    <span>Network Mode</span>
-                    <strong>{{ selectedContainer.network_mode || '-' }}</strong>
-                  </div>
-                  <div class="detail-field">
-                    <span>Privileged</span>
-                    <strong>{{ selectedContainer.privileged ? 'yes' : 'no' }}</strong>
-                  </div>
-                  <div class="detail-field">
-                    <span>User</span>
-                    <strong>{{ selectedContainer.user || 'default' }}</strong>
-                  </div>
-                  <div class="detail-field">
-                    <span>Workdir</span>
-                    <code>{{ selectedContainer.working_dir || '-' }}</code>
+                  <div class="info-row-right">
+                    <el-tooltip :content="selectedContainer.image" placement="top" :show-after="500">
+                      <span class="info-row-value monospace">{{ selectedContainer.image }}</span>
+                    </el-tooltip>
+                    <el-button 
+                      class="ui-icon-button ui-icon-button--small row-copy-btn"
+                      size="small" 
+                      text 
+                      :icon="DocumentCopy"
+                      @click="copyToClipboard(selectedContainer.image, t('workspace.containerImage'))"
+                      :aria-label="t('stackOp.copy')"
+                    />
                   </div>
                 </div>
-              </div>
-
-              <div v-if="formatCommand(selectedContainer.entrypoint) || formatCommand(selectedContainer.command)" class="detail-section-group">
-                <div class="detail-section-title">Command</div>
-                <div class="detail-list">
-                  <span>Entrypoint</span>
-                  <code>{{ formatCommand(selectedContainer.entrypoint) || '-' }}</code>
-                  <span>Cmd</span>
-                  <code>{{ formatCommand(selectedContainer.command) || '-' }}</code>
+                <!-- ID Row -->
+                <div class="info-row id-row">
+                  <div class="info-row-left">
+                    <el-icon><Monitor /></el-icon>
+                    <span class="info-row-label">{{ t('workspace.containerId') }}</span>
+                  </div>
+                  <div class="info-row-right">
+                    <span class="info-row-value monospace">{{ selectedContainer.id }}</span>
+                    <el-button 
+                      class="ui-icon-button ui-icon-button--small row-copy-btn"
+                      size="small" 
+                      text 
+                      :icon="DocumentCopy"
+                      @click="copyToClipboard(selectedContainer.id, t('workspace.containerId'))"
+                      :aria-label="t('stackOp.copy')"
+                    />
+                  </div>
                 </div>
-              </div>
-
-              <div v-if="networkEntries.length" class="detail-section-group">
-                <div class="detail-section-title">Networks</div>
-                <div class="network-detail-list">
-                  <div v-for="[name, network] in networkEntries" :key="name" class="network-detail-row">
-                    <strong>{{ name }}</strong>
-                    <code>{{ network.IPAddress || network.GlobalIPv6Address || '-' }}</code>
-                    <span>{{ network.MacAddress || '-' }}</span>
+                <!-- Created Row -->
+                <div class="info-row created-row">
+                  <div class="info-row-left">
+                    <el-icon><Calendar /></el-icon>
+                    <span class="info-row-label">{{ t('containerTable.created') }}</span>
+                  </div>
+                  <div class="info-row-right">
+                    <span class="info-row-value">{{ formatTime(selectedContainer.created) }}</span>
                   </div>
                 </div>
               </div>
 
-              <div v-if="visibleMounts.length" class="detail-section-group">
-                <div class="detail-section-title">Mounts</div>
-                <div class="mount-detail-list">
-                  <div v-for="mount in visibleMounts" :key="`${mount.Source}-${mount.Destination}`" class="mount-detail-row">
-                    <span class="mount-type">{{ mount.Type || 'mount' }}</span>
-                    <code>{{ mount.Source || mount.Name || '-' }}</code>
-                    <span>-&gt;</span>
-                    <code>{{ mount.Destination || '-' }}</code>
-                    <span>{{ mount.RW === false ? 'ro' : 'rw' }}</span>
+              <!-- Ports -->
+              <div class="ports-section" v-if="deduplicatedPorts.length">
+                <span class="ports-section-label">{{ t('workspace.containerPorts') }}</span>
+                <div class="ports-grid">
+                  <div v-for="(port, idx) in deduplicatedPorts" :key="idx" class="port-row-item">
+                    <span class="port-arrow-icon">⚡</span>
+                    <div class="port-mapping">
+                      <span v-if="port.public_port" class="port-host-link" @click="copyToClipboard(`${port.public_port}`, 'Public Port')">
+                        {{ port.public_port }}
+                      </span>
+                      <span v-else class="port-host-none">-</span>
+                      <span class="port-arrow">➔</span>
+                      <span class="port-target">{{ port.private_port }}</span>
+                      <span class="port-protocol-tag">{{ port.type }}</span>
+                    </div>
+                    <el-button
+                      v-if="port.public_port"
+                      class="ui-icon-button ui-icon-button--small port-action-btn"
+                      size="small"
+                      text
+                      :icon="DocumentCopy"
+                      @click="copyToClipboard(port.public_port ? `${port.public_port}` : `${port.private_port}`, 'Port')"
+                    />
                   </div>
                 </div>
               </div>
-
-              <div v-if="selectedContainer.repo_digests?.length" class="detail-list">
-                <span>Repo Digests</span>
-                <code v-for="digest in selectedContainer.repo_digests" :key="digest">
-                  {{ digest }}
-                </code>
+              <div class="ports-section empty" v-else>
+                <span class="ports-section-label">{{ t('workspace.containerPorts') }}</span>
+                <span class="ports-empty-text">-</span>
               </div>
 
-              <div v-if="visibleContainerLabels.length" class="detail-list labels">
-                <span>Labels</span>
-                <code
-                  v-for="[key, value] in visibleContainerLabels"
-                  :key="key"
+              <!-- Collapsible Details -->
+              <el-collapse v-model="activeCollapseNames" class="detail-collapse">
+                <el-collapse-item name="runtime">
+                  <template #title>
+                    <div class="collapse-title">
+                      <el-icon><Setting /></el-icon>
+                      <span>{{ t('workspace.runtime') }}</span>
+                    </div>
+                  </template>
+                  <div class="collapse-grid">
+                    <div class="collapse-field">
+                      <span class="field-label">{{ t('workspace.restart') }}</span>
+                      <strong class="field-value">{{ formatRestartPolicy(selectedContainer.restart_policy) }}</strong>
+                    </div>
+                    <div class="collapse-field">
+                      <span class="field-label">{{ t('workspace.restarts') }}</span>
+                      <strong class="field-value">{{ selectedContainer.restart_count ?? 0 }}</strong>
+                    </div>
+                    <div class="collapse-field">
+                      <span class="field-label">{{ t('workspace.networkMode') }}</span>
+                      <strong class="field-value monospace">{{ selectedContainer.network_mode || '-' }}</strong>
+                    </div>
+                    <div class="collapse-field">
+                      <span class="field-label">{{ t('workspace.privileged') }}</span>
+                      <strong class="field-value">{{ selectedContainer.privileged ? t('workspace.yes') : t('workspace.no') }}</strong>
+                    </div>
+                    <div class="collapse-field">
+                      <span class="field-label">{{ t('workspace.user') }}</span>
+                      <strong class="field-value">{{ selectedContainer.user || t('workspace.default') }}</strong>
+                    </div>
+                    <div class="collapse-field">
+                      <span class="field-label">{{ t('workspace.workdir') }}</span>
+                      <div class="field-value-wrapper">
+                        <code class="field-value monospace" :title="selectedContainer.working_dir">{{ selectedContainer.working_dir || '-' }}</code>
+                        <el-button
+                          v-if="selectedContainer.working_dir"
+                          class="ui-icon-button ui-icon-button--small field-copy-btn"
+                          size="small"
+                          text
+                          :icon="DocumentCopy"
+                          @click="copyToClipboard(selectedContainer.working_dir, t('workspace.workdir'))"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </el-collapse-item>
+
+                <el-collapse-item
+                  v-if="formatCommand(selectedContainer.entrypoint) || formatCommand(selectedContainer.command)"
+                  name="command"
                 >
-                  {{ key }}={{ value }}
-                </code>
-              </div>
+                  <template #title>
+                    <div class="collapse-title">
+                      <el-icon><Document /></el-icon>
+                      <span>{{ t('workspace.command') }}</span>
+                    </div>
+                  </template>
+                  <div class="command-block-list">
+                    <div v-if="formatCommand(selectedContainer.entrypoint)" class="command-block">
+                      <div class="command-block-header">
+                        <span>Entrypoint</span>
+                        <el-button
+                          class="ui-icon-button ui-icon-button--small"
+                          size="small"
+                          text
+                          :icon="DocumentCopy"
+                          @click="copyToClipboard(formatCommand(selectedContainer.entrypoint), 'Entrypoint')"
+                        />
+                      </div>
+                      <pre class="command-terminal-box"><code>{{ formatCommand(selectedContainer.entrypoint) }}</code></pre>
+                    </div>
+                    <div v-if="formatCommand(selectedContainer.command)" class="command-block">
+                      <div class="command-block-header">
+                        <span>Cmd</span>
+                        <el-button
+                          class="ui-icon-button ui-icon-button--small"
+                          size="small"
+                          text
+                          :icon="DocumentCopy"
+                          @click="copyToClipboard(formatCommand(selectedContainer.command), 'Command')"
+                        />
+                      </div>
+                      <pre class="command-terminal-box"><code>{{ formatCommand(selectedContainer.command) }}</code></pre>
+                    </div>
+                  </div>
+                </el-collapse-item>
+
+                <el-collapse-item v-if="networkEntries.length" name="networks">
+                  <template #title>
+                    <div class="collapse-title">
+                      <el-icon><Link /></el-icon>
+                      <span>{{ t('workspace.networks') }}</span>
+                    </div>
+                  </template>
+                  <div class="network-detail-list">
+                    <div v-for="[name, network] in networkEntries" :key="name" class="network-row-card">
+                      <div class="network-row-header">
+                        <span class="network-name-badge">{{ name }}</span>
+                        <el-button
+                          v-if="network.IPAddress || network.GlobalIPv6Address"
+                          class="ui-icon-button ui-icon-button--small"
+                          size="small"
+                          text
+                          :icon="DocumentCopy"
+                          @click="copyToClipboard(network.IPAddress || network.GlobalIPv6Address || '', 'IP')"
+                        />
+                      </div>
+                      <div class="network-row-body">
+                        <div class="network-metric-item">
+                          <span class="network-metric-label">IP Address</span>
+                          <code class="network-metric-value monospace">{{ network.IPAddress || network.GlobalIPv6Address || '-' }}</code>
+                        </div>
+                        <div class="network-metric-item">
+                          <span class="network-metric-label">Mac Address</span>
+                          <code class="network-metric-value monospace">{{ network.MacAddress || '-' }}</code>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </el-collapse-item>
+
+                <el-collapse-item v-if="visibleMounts.length" name="mounts">
+                  <template #title>
+                    <div class="collapse-title">
+                      <el-icon><FolderOpened /></el-icon>
+                      <span>{{ t('workspace.mounts') }}</span>
+                    </div>
+                  </template>
+                  <div class="mount-detail-list">
+                    <div v-for="mount in visibleMounts" :key="`${mount.Source}-${mount.Destination}`" class="mount-row-card">
+                      <div class="mount-row-header">
+                        <span class="mount-type-badge" :class="mount.Type || 'mount'">{{ mount.Type || 'mount' }}</span>
+                        <span class="mount-rw-badge" :class="mount.RW === false ? 'ro' : 'rw'">
+                          {{ mount.RW === false ? 'Read-only' : 'Read-Write' }}
+                        </span>
+                      </div>
+                      <div class="mount-path-group">
+                        <div class="mount-path-item host-path">
+                          <span class="path-icon">🖥️</span>
+                          <div class="path-content">
+                            <span class="path-title">Host Source</span>
+                            <code class="path-value monospace" :title="mount.Source || mount.Name">{{ mount.Source || mount.Name || '-' }}</code>
+                          </div>
+                          <el-button
+                            v-if="mount.Source || mount.Name"
+                            class="ui-icon-button ui-icon-button--small"
+                            size="small"
+                            text
+                            :icon="DocumentCopy"
+                            @click="copyToClipboard(mount.Source || mount.Name || '', 'Mount Source')"
+                          />
+                        </div>
+                        <div class="mount-path-divider">
+                          <el-icon><ArrowRight /></el-icon>
+                        </div>
+                        <div class="mount-path-item container-path">
+                          <span class="path-icon">📦</span>
+                          <div class="path-content">
+                            <span class="path-title">Container Dest</span>
+                            <code class="path-value monospace" :title="mount.Destination">{{ mount.Destination || '-' }}</code>
+                          </div>
+                          <el-button
+                            v-if="mount.Destination"
+                            class="ui-icon-button ui-icon-button--small"
+                            size="small"
+                            text
+                            :icon="DocumentCopy"
+                            @click="copyToClipboard(mount.Destination || '', 'Mount Dest')"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </el-collapse-item>
+
+                <el-collapse-item v-if="visibleContainerLabels.length" name="labels">
+                  <template #title>
+                    <div class="collapse-title">
+                      <el-icon><Collection /></el-icon>
+                      <span>{{ t('workspace.labels') }}</span>
+                    </div>
+                  </template>
+                  <div class="label-list">
+                    <div v-for="[key, value] in visibleContainerLabels" :key="key" class="label-row-card">
+                      <div class="label-key-wrap">
+                        <span class="label-key monospace">{{ key }}</span>
+                        <el-button
+                          class="ui-icon-button ui-icon-button--small"
+                          size="small"
+                          text
+                          :icon="DocumentCopy"
+                          @click="copyToClipboard(`${key}=${value}`, 'Label')"
+                        />
+                      </div>
+                      <div class="label-value-wrap">
+                        <code class="label-value monospace">{{ value }}</code>
+                      </div>
+                    </div>
+                  </div>
+                </el-collapse-item>
+              </el-collapse>
             </div>
 
             <div v-else class="compose-preview">
-              <div v-if="composeLoading" class="panel-muted">正在加载 compose.yaml...</div>
+              <div v-if="composeLoading" class="panel-muted">{{ t('workspace.loadingCompose') }}</div>
               <el-alert
                 v-else-if="composeError"
                 :title="composeError"
@@ -435,7 +684,7 @@
                 show-icon
                 :closable="false"
               />
-              <pre v-else><code>{{ composeYaml || 'Dockge 没有返回 compose.yaml。' }}</code></pre>
+              <pre v-else><code>{{ composeYaml || t('workspace.noComposeFromDockge') }}</code></pre>
             </div>
           </aside>
         </div>
@@ -457,13 +706,25 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, reactive, ref, watch } from "vue";
 import {
+  Collection,
+  Cpu,
   Document,
+  DocumentCopy,
+  Download,
   EditPen,
   FolderOpened,
+  Link,
+  Monitor,
   Plus,
   Refresh,
   Search,
+  Setting,
+  Top,
+  Calendar,
+  ArrowRight,
 } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
+import { useI18n } from "vue-i18n";
 import { apiClient } from "@/api/client";
 import { streamSse } from "@/api/sse";
 import StatusIcon from "./StatusIcon.vue";
@@ -578,6 +839,8 @@ const emit = defineEmits<{
   "check-updates": [];
 }>();
 
+const { t, locale } = useI18n();
+
 const stackSearch = ref("");
 const selectedStackName = ref("");
 const selectedContainerId = ref("");
@@ -630,6 +893,63 @@ const selectedContainerStats = computed(() =>
   selectedContainer.value ? props.containerStats[selectedContainer.value.id] : null
 );
 
+const deduplicatedPorts = computed(() => {
+  if (!selectedContainer.value || !selectedContainer.value.ports) return [];
+  const seen = new Set<string>();
+  return selectedContainer.value.ports.filter((port) => {
+    const key = `${port.public_port || ''}:${port.private_port}/${port.type}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+});
+
+async function copyToClipboard(text: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    ElMessage.success(`${label}: ${t("stackOp.copied")}`);
+  } catch (err) {
+    ElMessage.error(t("stackOp.copyFailed") || "Copy failed");
+  }
+}
+
+const activeCollapseNames = ref<string[]>(["runtime"]);
+
+const cpuColor = computed(() => {
+  const pct = selectedContainerStats.value?.cpu_percent ?? 0;
+  if (pct > 80) return "#f87171";
+  if (pct > 50) return "#fbbf24";
+  return "#34d399";
+});
+
+const cpuLevel = computed(() => {
+  const pct = selectedContainerStats.value?.cpu_percent ?? 0;
+  if (pct > 80) return "critical";
+  if (pct > 50) return "warn";
+  return "ok";
+});
+
+const memColor = computed(() => {
+  const pct = selectedContainerStats.value?.memory_percent ?? 0;
+  if (pct > 80) return "#f87171";
+  if (pct > 50) return "#fbbf24";
+  return "#34d399";
+});
+
+const memLevel = computed(() => {
+  const pct = selectedContainerStats.value?.memory_percent ?? 0;
+  if (pct > 80) return "critical";
+  if (pct > 50) return "warn";
+  return "ok";
+});
+
+function formatTime(created: number): string {
+  const d = new Date(created * 1000);
+  const months = d.toLocaleDateString(locale.value, { month: "2-digit", day: "2-digit" });
+  const time = d.toLocaleTimeString(locale.value, { hour: "2-digit", minute: "2-digit" });
+  return `${months} ${time}`;
+}
+
 const visibleContainerLabels = computed(() => {
   const labels = selectedContainer.value?.labels || {};
   return Object.entries(labels)
@@ -653,10 +973,10 @@ const runningStackCount = computed(() =>
 );
 
 function statusLabel(status: string): string {
-  if (status === "running") return "已启动";
-  if (status === "stopped") return "已停止";
-  if (status === "partially running") return "部分运行";
-  return status || "未知";
+  if (status === "running") return t("stackStatus.running");
+  if (status === "stopped") return t("stackStatus.stopped");
+  if (status === "partially running") return t("stackStatus.partial");
+  return status || t("stackStatus.unknown");
 }
 
 function stackStatusType(status: string): string {
@@ -713,6 +1033,13 @@ function formatPorts(ports: ContainerPort[] = []): string {
       ? `${port.public_port}:${port.private_port}/${port.type}`
       : `${port.private_port}/${port.type}`)
     .join(", ");
+}
+
+function formatPortsPreview(ports: ContainerPort[] = []): string {
+  const visiblePorts = ports.slice(0, 3);
+  const summary = formatPorts(visiblePorts);
+  const hiddenCount = ports.length - visiblePorts.length;
+  return hiddenCount > 0 ? `${summary} +${hiddenCount}` : summary;
 }
 
 function formatCommand(value: string[] | string | null | undefined): string {
@@ -822,7 +1149,7 @@ async function loadCompose() {
     composeYaml.value = res.data.compose_yaml || "";
     composeFileName.value = res.data.compose_file_name || "compose.yaml";
   } catch (error: any) {
-    composeError.value = error.response?.data?.detail || error.message || "Compose 加载失败";
+    composeError.value = error.response?.data?.detail || error.message || t("workspace.composeLoadFailed");
   } finally {
     composeLoading.value = false;
   }
@@ -1024,39 +1351,16 @@ onUnmounted(() => {
 }
 
 .compose-add-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   height: 34px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #63c7ff, #7be7c8);
-  color: #03111f;
+  border-radius: 999px !important;
+  padding: 0 14px !important;
   font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: filter 0.16s ease, transform 0.16s ease;
-}
-
-.compose-add-button:hover,
-.compose-add-button:focus-visible {
-  filter: brightness(1.06);
-  transform: translateY(-1px);
-}
-
-.sidebar-icon-button,
-.compact-action-button,
-.detail-compose-button {
-  border-color: var(--border-subtle) !important;
-  background: var(--stack-action-bg, rgba(148, 163, 184, 0.08)) !important;
-  color: var(--text-secondary) !important;
 }
 
 .sidebar-icon-button {
-  width: 34px;
   height: 34px;
-  padding: 0 !important;
+  min-height: 34px;
+  width: 34px;
 }
 
 .sidebar-search {
@@ -1125,6 +1429,8 @@ onUnmounted(() => {
 }
 
 .stack-nav-item.all {
+  min-height: 50px;
+  padding-block: 5px;
   justify-content: space-between;
   color: var(--text-secondary);
 }
@@ -1577,7 +1883,7 @@ onUnmounted(() => {
 
 .container-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(70px, auto) minmax(90px, auto) auto;
+  grid-template-columns: auto minmax(180px, 1fr) max-content minmax(0, min(34%, 360px)) max-content;
   padding: 8px 10px;
 }
 
@@ -1595,6 +1901,11 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.container-port {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .terminal-section {
@@ -1707,6 +2018,66 @@ onUnmounted(() => {
   margin-bottom: 12px;
 }
 
+.panel-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+
+.status-badge.running {
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--success);
+  border: 1px solid rgba(52, 211, 153, 0.22);
+}
+
+.status-badge.stopped {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-secondary);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.status-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-badge.running .status-badge-dot {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+  animation: pulse-breathing 2s infinite ease-in-out;
+}
+
+.status-badge.stopped .status-badge-dot {
+  background: var(--text-secondary);
+}
+
+@keyframes pulse-breathing {
+  0%, 100% {
+    transform: scale(0.95);
+    opacity: 0.7;
+    box-shadow: 0 0 4px var(--success);
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+    box-shadow: 0 0 10px var(--success);
+  }
+}
+
 .compose-preview {
   display: flex;
   flex: 1;
@@ -1742,148 +2113,746 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 10px;
+  gap: 12px;
   min-height: 0;
   overflow: auto;
+  padding-right: 4px;
 }
 
-.detail-fields-grid {
+/* ── Stats Dashboard ────────────────────────────── */
+
+.stats-dashboard {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.detail-fields-grid.compact {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.detail-field,
-.detail-list {
-  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--surface-base);
 }
 
-.detail-field span,
-.detail-list > span,
-.detail-stats-grid span {
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  min-height: 82px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--surface-panel-raised);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.stat-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+}
+
+.stat-card-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stat-card-head .el-icon {
   font-size: 11px;
-  font-weight: 800;
+  color: var(--accent-blue);
+}
+
+.stat-card-body {
+  display: flex;
+  flex-direction: column;
+  margin-top: 2px;
+  margin-bottom: auto;
+}
+
+.stat-card-value {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 850;
+  color: var(--text-primary);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.stat-card-value small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-left: 0.5px;
+}
+
+.stat-card-value.net-val {
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-card-sub {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+  line-height: 1;
+}
+
+.stat-card :deep(.el-progress) {
+  margin-top: 4px;
+}
+
+.stat-card-bar-spacer {
+  height: 2px;
+  margin-top: 4px;
+}
+
+.stat-card.cpu.critical {
+  border-color: rgba(248, 113, 113, 0.32);
+  background: linear-gradient(180deg, rgba(248, 113, 113, 0.04) 0%, rgba(248, 113, 113, 0.01) 100%);
+}
+
+.stat-card.cpu.warn {
+  border-color: rgba(251, 191, 36, 0.32);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.04) 0%, rgba(251, 191, 36, 0.01) 100%);
+}
+
+.stat-card.mem.critical {
+  border-color: rgba(248, 113, 113, 0.32);
+  background: linear-gradient(180deg, rgba(248, 113, 113, 0.04) 0%, rgba(248, 113, 113, 0.01) 100%);
+}
+
+.stat-card.mem.warn {
+  border-color: rgba(251, 191, 36, 0.32);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.04) 0%, rgba(251, 191, 36, 0.01) 100%);
+}
+
+.stat-na {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* ── Basic Info List Card ────────────────────────────── */
+
+.info-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-radius: 12px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  background: var(--surface-panel);
+  transition: background-color 0.2s;
+}
+
+.info-row:hover {
+  background: var(--surface-panel-raised);
+}
+
+.info-row-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 550;
+  flex-shrink: 0;
+}
+
+.info-row-left .el-icon {
+  font-size: 14px;
+  color: var(--accent-blue);
+}
+
+.info-row-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 70%;
+}
+
+.info-row-value {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-row-value.monospace {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.row-copy-btn {
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+.info-row:hover .row-copy-btn {
+  opacity: 1;
+}
+
+/* ── Ports Section ────────────────────────────────── */
+
+.ports-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+}
+
+.ports-section-label {
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--text-secondary);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
-.detail-field code,
-.detail-list code {
-  overflow: hidden;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  text-overflow: ellipsis;
+.ports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 6px;
 }
 
-.detail-section-group {
-  display: grid;
+.port-row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--surface-panel-raised);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.2s;
+}
+
+.port-row-item:hover {
+  border-color: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.04);
+}
+
+.port-arrow-icon {
+  font-size: 10px;
+  color: var(--accent-blue);
+  margin-right: 4px;
+}
+
+.port-mapping {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  min-width: 0;
+  flex: 1;
+}
+
+.port-host-link {
+  color: var(--accent-blue);
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition: border-bottom-color 0.2s;
+}
+
+.port-host-link:hover {
+  border-bottom-color: var(--accent-blue);
+}
+
+.port-host-none {
+  color: var(--text-muted);
+}
+
+.port-arrow {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.port-target {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.port-protocol-tag {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: bold;
+  transform: scale(0.9);
+}
+
+.port-action-btn {
+  opacity: 0.4;
+  margin-left: 2px;
+}
+
+.port-row-item:hover .port-action-btn {
+  opacity: 1;
+}
+
+.ports-section.empty {
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: row;
+}
+
+.ports-empty-text {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Collapse ───────────────────────────────────── */
+
+.detail-collapse {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 0;
+}
+
+.detail-collapse :deep(.el-collapse-item) {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-panel);
+  overflow: hidden;
+  transition: border-color 0.18s;
+}
+
+.detail-collapse :deep(.el-collapse-item:hover) {
+  border-color: var(--border-strong);
+}
+
+.detail-collapse :deep(.el-collapse-item.is-active) {
+  border-color: rgba(96, 165, 250, 0.28);
+}
+
+.detail-collapse :deep(.el-collapse-item__header) {
+  height: 42px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 0;
+  background: transparent;
+  transition: color 0.15s, background 0.15s;
+}
+
+.detail-collapse :deep(.el-collapse-item__header:hover) {
+  color: var(--text-primary);
+}
+
+.detail-collapse :deep(.el-collapse-item.is-active .el-collapse-item__header) {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.detail-collapse :deep(.el-collapse-item__arrow) {
+  color: var(--text-muted);
+  font-size: 13px;
+  transition: color 0.15s;
+}
+
+.detail-collapse :deep(.el-collapse-item__header:hover .el-collapse-item__arrow) {
+  color: var(--text-secondary);
+}
+
+.detail-collapse :deep(.el-collapse-item__wrap) {
+  border: 0;
+  background: transparent;
+}
+
+.detail-collapse :deep(.el-collapse-item__content) {
+  padding: 12px 14px 14px;
+}
+
+.collapse-title {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.detail-section-title {
+.collapse-title .el-icon {
+  font-size: 15px;
   color: var(--accent-blue);
-  font-size: 11px;
-  font-weight: 850;
-  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+.collapse-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.collapse-field {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-panel-raised);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.field-label {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.detail-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.detail-stats-grid > div {
-  display: grid;
-  gap: 5px;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--surface-base);
-}
-
-.detail-stats-grid strong,
-.detail-field strong {
+.field-value {
+  font-size: 12.5px;
+  font-weight: 650;
   color: var(--text-primary);
-  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.detail-list.labels {
-  max-height: 240px;
-  overflow: auto;
+.field-value-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
 }
 
-.network-detail-list,
-.mount-detail-list {
+.field-value-wrapper code {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-copy-btn {
+  opacity: 0.4;
+}
+
+.field-value-wrapper:hover .field-copy-btn {
+  opacity: 1;
+}
+
+/* ── Command Collapse ───────────────────────────── */
+
+.command-block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.command-block {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.network-detail-row,
-.mount-detail-row {
+.command-block-header {
+  display: flex;
   align-items: center;
-  min-width: 0;
-  padding: 9px 10px;
-  border-radius: 8px;
-  background: var(--surface-base);
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 750;
   color: var(--text-secondary);
-  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.network-detail-row {
-  display: grid;
-  grid-template-columns: minmax(80px, 0.7fr) minmax(0, 1fr) minmax(90px, 0.8fr);
-  gap: 8px;
+.command-block-header .el-button {
+  height: auto !important;
+  padding: 2px !important;
 }
 
-.mount-detail-row {
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto minmax(0, 1fr) 34px;
-  gap: 8px;
+.command-terminal-box {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #020609;
+  border: 1px solid var(--border-subtle);
+  max-height: 120px;
+  overflow: auto;
 }
 
-.network-detail-row strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-primary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.network-detail-row code,
-.mount-detail-row code {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-primary);
+.command-terminal-box code {
   font-family: var(--font-mono);
+  font-size: 11px;
+  color: #e5f2ff;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+:global([data-theme="light"] .command-terminal-box) {
+  background: #f8fafc;
+  border-color: rgba(60, 72, 88, 0.16);
+}
+
+:global([data-theme="light"] .command-terminal-box code) {
+  color: #0f172a;
+}
+
+/* ── Networks Collapse ──────────────────────────── */
+
+.network-row-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-panel-raised);
+  border: 1px solid var(--border-subtle);
+}
+
+.network-row-card + .network-row-card {
+  margin-top: 6px;
+}
+
+.network-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.network-name-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--accent-blue);
+}
+
+.network-row-header .el-button {
+  height: auto !important;
+  padding: 2px !important;
+}
+
+.network-row-body {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr;
+  gap: 8px;
+}
+
+.network-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.network-metric-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.network-metric-value {
+  font-size: 11px;
+  color: var(--text-primary);
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.mount-type {
+/* ── Mounts Collapse ────────────────────────────── */
+
+.mount-row-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--surface-panel-raised);
+  border: 1px solid var(--border-subtle);
+}
+
+.mount-row-card + .mount-row-card {
+  margin-top: 6px;
+}
+
+.mount-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mount-type-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
-  height: 20px;
-  border-radius: 999px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 99px;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
   background: rgba(96, 165, 250, 0.12);
   color: var(--accent-blue);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: lowercase;
 }
+
+.mount-rw-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.mount-rw-badge.rw {
+  background: rgba(52, 211, 153, 0.1);
+  color: var(--success);
+}
+
+.mount-rw-badge.ro {
+  background: rgba(248, 113, 113, 0.1);
+  color: var(--danger);
+}
+
+.mount-path-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mount-path-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-width: 0;
+}
+
+.path-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.path-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.path-title {
+  font-size: 8.5px;
+  font-weight: 750;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.path-value {
+  font-size: 11px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mount-path-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transform: rotate(90deg);
+  margin: -2px 0;
+}
+
+.mount-path-divider .el-icon {
+  font-size: 12px;
+}
+
+.mount-path-item .el-button {
+  opacity: 0.3;
+  padding: 2px !important;
+  height: auto !important;
+}
+
+.mount-path-item:hover .el-button {
+  opacity: 1;
+}
+
+/* ── Labels Collapse ────────────────────────────── */
+
+.label-row-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-panel-raised);
+  border: 1px solid var(--border-subtle);
+  min-width: 0;
+}
+
+.label-row-card + .label-row-card {
+  margin-top: 6px;
+}
+
+.label-key-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.label-key {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.label-key-wrap .el-button {
+  height: auto !important;
+  padding: 1px !important;
+  opacity: 0.3;
+}
+
+.label-row-card:hover .el-button {
+  opacity: 1;
+}
+
+.label-value-wrap {
+  min-width: 0;
+}
+
+.label-value {
+  font-size: 11px;
+  color: var(--text-primary);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+/* ── Animations & Commons ───────────────────────── */
 
 @keyframes blink {
   50% { opacity: 0; }
@@ -1941,8 +2910,20 @@ onUnmounted(() => {
     grid-column: 2;
   }
 
-  .detail-stats-grid {
+  .stats-dashboard {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .collapse-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mount-detail-row {
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>

@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { apiClient } from "@/api/client";
 import { ElMessage } from "element-plus";
+import { t } from "@/i18n";
 
 export const useAuthStore = defineStore("auth", () => {
   const token = ref(localStorage.getItem("token") || "");
@@ -22,9 +23,9 @@ export const useAuthStore = defineStore("auth", () => {
       return true;
     } catch (e: any) {
       if (e.response?.status === 429) {
-        ElMessage.error("登录尝试过于频繁，请稍后再试");
+        ElMessage.error(t("login.tooManyAttempts"));
       } else {
-        ElMessage.error("用户名或密码错误");
+        ElMessage.error(t("login.invalidCredentials"));
       }
       return false;
     }

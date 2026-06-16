@@ -1,15 +1,15 @@
 <template>
   <div class="container-stats">
     <div class="stat-row">
-      <el-tooltip content="CPU 使用率" placement="top">
+      <el-tooltip :content="t('containerStats.cpuUsage')" placement="top">
         <span class="stat-item">CPU {{ stats.cpu_percent.toFixed(1) }}%</span>
       </el-tooltip>
-      <el-tooltip content="内存使用" placement="top">
+      <el-tooltip :content="t('containerStats.memUsage')" placement="top">
         <span class="stat-item">MEM {{ formatBytes(stats.memory_usage) }}</span>
       </el-tooltip>
     </div>
     <div class="stat-row">
-      <el-tooltip content="网络接收/发送" placement="top">
+      <el-tooltip :content="t('containerStats.networkIO')" placement="top">
         <span class="stat-item">↓{{ formatBytes(stats.network_rx_bytes) }} ↑{{ formatBytes(stats.network_tx_bytes) }}</span>
       </el-tooltip>
     </div>
@@ -17,11 +17,14 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import type { ContainerStatsData } from "./ContainerTable.vue";
 
 defineProps<{
   stats: ContainerStatsData;
 }>();
+
+const { t } = useI18n();
 
 function formatBytes(bytes: number): string {
   if (!bytes) return "0";

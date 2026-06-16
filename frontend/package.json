@@ -1,5 +1,5 @@
 {
-  "name": "docker-dashboard",
+  "name": "fleetge",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -17,6 +17,7 @@
     "element-plus": "^2.9",
     "pinia": "^3.0",
     "vue": "^3.5",
+    "vue-i18n": "^10.0.8",
     "vue-router": "^4.5"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 <template>
   <span class="status-icon" :class="`status-${status}`">
-    <el-tooltip :content="statusLabel" placement="top">
+    <el-tooltip :content="label" placement="top">
       <span class="status-dot" />
     </el-tooltip>
   </span>
@@ -8,17 +8,20 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 
 const props = defineProps<{ status: string }>();
+const { t } = useI18n();
 
-const statusLabel = computed(() => {
-  const labels: Record<string, string> = {
-    online: "在线",
-    offline: "离线",
-    degraded: "指标异常",
-    unknown: "状态未知",
+const label = computed(() => {
+  const keys: Record<string, string> = {
+    online: "status.online",
+    offline: "status.offline",
+    degraded: "status.degraded",
+    unknown: "status.unknown",
   };
-  return labels[props.status] || props.status;
+  const key = keys[props.status];
+  return key ? t(key as any) : props.status;
 });
 </script>
 

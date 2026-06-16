@@ -1,15 +1,15 @@
 <template>
   <el-drawer
     :model-value="visible"
-    :title="`日志: ${stackName}`"
+    :title="t('log.title', { name: stackName })"
     direction="rtl"
     size="50%"
     @close="$emit('close')"
   >
     <div class="log-container">
       <div class="log-toolbar">
-        <el-button size="small" @click="loadLogs" :loading="loading">
-          <el-icon><Refresh /></el-icon> 刷新
+        <el-button class="ui-button ui-button--compact" size="small" @click="loadLogs" :loading="loading">
+          <el-icon><Refresh /></el-icon> {{ t('log.refresh') }}
         </el-button>
         <el-input-number
           v-model="tail"
@@ -19,14 +19,14 @@
           size="small"
           style="width: 120px"
         />
-        <span class="log-hint">行</span>
+        <span class="log-hint">{{ t('log.lines') }}</span>
       </div>
       <div class="log-content" ref="logContent">
         <div v-if="loading" class="log-loading">
-          <el-icon class="is-loading"><Loading /></el-icon> 加载中...
+          <el-icon class="is-loading"><Loading /></el-icon> {{ t('log.loading') }}
         </div>
         <pre v-else-if="logs" class="log-text">{{ logs }}</pre>
-        <el-empty v-else description="无日志" />
+        <el-empty v-else :description="t('log.noLogs')" />
       </div>
     </div>
   </el-drawer>
@@ -35,6 +35,7 @@
 <script setup lang="ts">
 import { nextTick, onUnmounted, ref, watch } from "vue";
 import { Refresh, Loading } from "@element-plus/icons-vue";
+import { useI18n } from "vue-i18n";
 import { streamSse } from "@/api/sse";
 
 const props = defineProps<{
@@ -44,6 +45,8 @@ const props = defineProps<{
 }>();
 
 defineEmits<{ close: [] }>();
+
+const { t } = useI18n();
 
 const loading = ref(false);
 const logs = ref("");

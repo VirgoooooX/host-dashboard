@@ -1,7 +1,7 @@
 <template>
   <el-drawer
     :model-value="visible"
-    :title="`操作输出 — ${stackName}`"
+    :title="t('terminal.title', { name: stackName })"
     direction="rtl"
     size="55%"
     class="terminal-drawer"
@@ -27,11 +27,12 @@
         <div class="footer-right">
           <el-button
             v-if="lines.length > 0"
+            class="ui-button ui-button--compact"
             size="small"
             text
             @click="copyOutput"
           >
-            {{ copied ? '已复制' : '复制输出' }}
+            {{ copied ? t('terminal.copied') : t('terminal.copyOutput') }}
           </el-button>
         </div>
       </div>
@@ -42,6 +43,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
 import { ElMessage } from "element-plus";
+import { useI18n } from "vue-i18n";
 import { Loading, SuccessFilled, WarningFilled } from "@element-plus/icons-vue";
 
 const props = defineProps<{
@@ -54,6 +56,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ close: [] }>();
 
+const { t } = useI18n();
 const viewportRef = ref<HTMLElement | null>(null);
 const copied = ref(false);
 
@@ -61,7 +64,6 @@ function onClose() {
   emit("close");
 }
 
-// Auto-scroll when lines change
 watch(
   () => props.lines.length,
   async () => {
@@ -78,7 +80,7 @@ async function copyOutput() {
     copied.value = true;
     setTimeout(() => { copied.value = false; }, 2000);
   } catch {
-    ElMessage.warning("复制失败");
+    ElMessage.warning(t("terminal.copyFailed"));
   }
 }
 </script>
@@ -124,7 +126,6 @@ async function copyOutput() {
   50% { opacity: 0; }
 }
 
-/* ── Footer ────────────────────────────────────── */
 .terminal-footer {
   display: flex;
   align-items: center;

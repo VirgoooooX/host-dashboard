@@ -9,37 +9,39 @@
     <div class="compose-editor">
       <header class="compose-editor__header">
         <div>
-          <div class="compose-editor__kicker">Compose Editor</div>
+          <div class="compose-editor__kicker">{{ t('compose.kicker') }}</div>
           <h2 v-if="!createMode">{{ stackName }}</h2>
           <el-input
             v-else
             v-model="newStackName"
             class="stack-name-input"
-            placeholder="stack-name"
+            :placeholder="t('compose.stackNamePlaceholder')"
             maxlength="64"
             clearable
           />
           <p>{{ composeFileName }}</p>
-          <p v-if="managed" class="compose-editor__managed">Dockge 管理</p>
+          <p v-if="managed" class="compose-editor__managed">{{ t('compose.managedByDockge') }}</p>
         </div>
         <div class="compose-editor__actions">
-          <el-button :disabled="loading || saving" @click="$emit('close')">
-            关闭
+          <el-button class="ui-button ui-button--muted" :disabled="loading || saving" @click="$emit('close')">
+            {{ t('compose.close') }}
           </el-button>
           <el-button
+            class="ui-button"
             :loading="saving === 'save'"
             :disabled="!canSubmit || loading || !!saving"
             @click="save(false)"
           >
-            保存草稿
+            {{ t('compose.saveDraft') }}
           </el-button>
           <el-button
+            class="ui-button ui-button--primary"
             type="primary"
             :loading="saving === 'deploy'"
             :disabled="!canSubmit || loading || !!saving"
             @click="save(true)"
           >
-            保存并部署
+            {{ t('compose.saveAndDeploy') }}
           </el-button>
         </div>
       </header>
@@ -57,7 +59,6 @@
         <el-icon class="is-loading" :size="28"><Loading /></el-icon>
       </div>
 
-      <!-- Compose tabs (hidden during active deploy streaming) -->
       <el-tabs
         v-else-if="saving !== 'deploy'"
         v-model="activeTab"
@@ -85,9 +86,8 @@
         </el-tab-pane>
       </el-tabs>
 
-      <!-- Live terminal output during deploy -->
       <div v-if="saving === 'deploy'" class="deploy-terminal">
-        <div class="deploy-terminal-header">部署输出</div>
+        <div class="deploy-terminal-header">{{ t('compose.deployOutput') }}</div>
         <div class="deploy-terminal-viewport" ref="deployViewportRef">
           <div
             v-for="(line, i) in deployLines"
@@ -98,7 +98,6 @@
         </div>
       </div>
 
-      <!-- Operation status line -->
       <div v-if="operationStatus" class="compose-operation-status" :class="`op-${operationStatus.status}`">
         <el-icon v-if="operationStatus.status === 'running'" class="is-loading"><Loading /></el-icon>
         <el-icon v-else-if="operationStatus.status === 'success'"><SuccessFilled /></el-icon>
@@ -112,6 +111,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { useI18n } from "vue-i18n";
 import { Loading, SuccessFilled, WarningFilled } from "@element-plus/icons-vue";
 import { apiClient } from "@/api/client";
 import { streamSse } from "@/api/sse";
@@ -124,6 +124,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ close: []; saved: [] }>();
+
+const { t } = useI18n();
 
 const loading = ref(false);
 const saving = ref<"save" | "deploy" | null>(null);
@@ -139,7 +141,6 @@ const operationStatus = ref<{
   logTail?: string;
 } | null>(null);
 
-// Deploy streaming state
 const deployLines = ref<string[]>([]);
 const deployStreamActive = ref(false);
 const deployViewportRef = ref<HTMLElement | null>(null);
@@ -163,14 +164,14 @@ const canSubmit = computed(() =>
 );
 const emptyAlert = computed(() =>
   !targetStackName.value
-    ? "请输入 Stack 名称。"
+    ? t("compose.emptyNameAlert")
     : !hasValidStackName.value
-      ? "Stack 名称只能包含字母、数字、点、下划线和短横线，且必须以字母或数字开头。"
+      ? t("compose.invalidNameAlert")
       : composeYaml.value.trim()
         ? ""
         : createMode.value
-          ? "compose.yaml 不能为空。"
-          : "Dockge 没有返回 compose.yaml，当前不能编辑。"
+          ? t("compose.emptyYamlAlert")
+          : t("compose.noComposeAlert")
 );
 
 watch(
@@ -190,7 +191,6 @@ watch(
   { immediate: true }
 );
 
-// Auto-scroll deploy output
 watch(
   () => deployLines.value.length,
   async () => {
@@ -200,8 +200,6 @@ watch(
     }
   }
 );
-
-// ── API calls ──────────────────────────────────────────────────
 
 function initializeCreateCompose() {
   loading.value = false;
@@ -228,7 +226,7 @@ async function fetchCompose() {
     managed.value = false;
     composeYaml.value = "";
     composeEnv.value = "";
-    ElMessage.error(`读取 Compose 失败: ${e.response?.data?.detail || e.message}`);
+    ElMessage.error(t("compose.readFailed", { detail: e.response?.data?.detail || e.message }));
   } finally {
     loading.value = false;
   }
@@ -237,28 +235,32 @@ async function fetchCompose() {
 async function save(deploy: boolean) {
   const stackNameForRequest = targetStackName.value;
   if (!stackNameForRequest) {
-    ElMessage.error("Stack 名称不能为空");
+    ElMessage.error(t("compose.nameRequired"));
     return;
   }
   if (!hasValidStackName.value) {
-    ElMessage.error("Stack 名称格式不正确");
+    ElMessage.error(t("compose.nameInvalid"));
     return;
   }
   if (!composeYaml.value.trim()) {
-    ElMessage.error("compose.yaml 不能为空");
+    ElMessage.error(t("compose.emptyYamlAlert"));
     return;
   }
 
-  const actionPrefix = createMode.value ? "创建" : "保存";
+  const actionLabel = createMode.value ? t("compose.createAction") : t("compose.saveAction");
   try {
     await ElMessageBox.confirm(
       deploy
-        ? `${actionPrefix}并部署 Stack「${stackNameForRequest}」？这会创建或重新创建相关容器。`
-        : `${actionPrefix} Stack「${stackNameForRequest}」的 compose 草稿？`,
-      deploy ? `${actionPrefix}并部署` : `${actionPrefix}草稿`,
+        ? t("compose.confirmDeploy", { action: actionLabel, name: stackNameForRequest })
+        : t("compose.confirmSave", { action: actionLabel, name: stackNameForRequest }),
+      deploy
+        ? t("compose.confirmDeployTitle", { action: actionLabel })
+        : t("compose.confirmSaveTitle", { action: actionLabel }),
       {
-        confirmButtonText: deploy ? `${actionPrefix}并部署` : actionPrefix,
-        cancelButtonText: "取消",
+        confirmButtonText: deploy
+          ? t("compose.confirmDeployTitle", { action: actionLabel })
+          : actionLabel,
+        cancelButtonText: t("compose.cancel"),
         type: deploy ? "warning" : "info",
       }
     );
@@ -267,12 +269,11 @@ async function save(deploy: boolean) {
   }
 
   if (!deploy) {
-    // ── Non-deploy save (fast, no streaming) ──
     saving.value = "save";
 
     operationStatus.value = {
       status: "running",
-      message: "保存中...",
+      message: t("compose.saving"),
     };
 
     try {
@@ -290,36 +291,35 @@ async function save(deploy: boolean) {
 
       operationStatus.value = {
         status: "success",
-        message: "已保存草稿",
+        message: createMode.value ? t("compose.draftCreated") : t("compose.draftSaved"),
         logTail: res.data?.log_tail || undefined,
       };
 
-      ElMessage.success(createMode.value ? "已创建草稿" : "已保存草稿");
+      ElMessage.success(createMode.value ? t("compose.draftCreated") : t("compose.draftSaved"));
       emit("saved");
     } catch (e: any) {
       const detail = e.response?.data?.detail || e.message;
 
       operationStatus.value = {
         status: "error",
-        message: `保存失败: ${detail}`,
+        message: t("compose.saveFailed", { detail }),
         logTail: e.response?.data?.log_tail || undefined,
       };
 
-      ElMessage.error(`保存失败: ${detail}`);
+      ElMessage.error(t("compose.saveFailed", { detail }));
     } finally {
       saving.value = null;
     }
     return;
   }
 
-  // ── Deploy (streaming) ──
   saving.value = "deploy";
   deployLines.value = [];
   deployStreamActive.value = true;
 
   operationStatus.value = {
     status: "running",
-    message: "部署中...",
+    message: t("compose.deploying"),
   };
 
   const url = `/api/hosts/${props.hostId}/stacks/${encodeURIComponent(stackNameForRequest)}/compose/deploy`;
@@ -343,7 +343,7 @@ async function save(deploy: boolean) {
         deployStreamActive.value = false;
         operationStatus.value = {
           status: "error",
-          message: "部署无响应，可能仍在 Dockge 后台执行，请稍后刷新确认。",
+          message: t("compose.deployTimeout"),
         };
         ElMessage.warning(operationStatus.value.message);
       },
@@ -358,14 +358,14 @@ async function save(deploy: boolean) {
 
           operationStatus.value = {
             status: success ? "success" : "error",
-            message: data.message || (success ? "部署成功" : "部署失败"),
+            message: data.message || (success ? t("compose.deploySuccess") : t("compose.deployFailed", { detail: "" })),
           };
 
           if (success) {
-            ElMessage.success(createMode.value ? "已创建并部署" : "已保存并部署");
+            ElMessage.success(createMode.value ? t("compose.createdAndDeployed") : t("compose.deployedAndSaved"));
             emit("saved");
           } else {
-            ElMessage.error(`部署失败: ${data.message || "未知错误"}`);
+            ElMessage.error(t("compose.deployFailed", { detail: data.message || t("compose.unknownError") }));
           }
         } else if (ev.event === "error") {
           completed = true;
@@ -373,32 +373,31 @@ async function save(deploy: boolean) {
           const data = ev.data || {};
           operationStatus.value = {
             status: "error",
-            message: `部署失败: ${data.message || "未知错误"}`,
+            message: t("compose.deployFailed", { detail: data.message || t("compose.unknownError") }),
           };
           ElMessage.error(operationStatus.value.message);
         }
       },
     });
 
-    // Stream ended normally without a terminal event
     if (!completed && deployStreamActive.value) {
       deployStreamActive.value = false;
       operationStatus.value = {
         status: "success",
-        message: "部署完成",
+        message: t("compose.deployCompleted"),
       };
-      ElMessage.success(createMode.value ? "已创建并部署" : "已保存并部署");
+      ElMessage.success(createMode.value ? t("compose.createdAndDeployed") : t("compose.deployedAndSaved"));
       emit("saved");
     }
   } catch (e: any) {
     if (completed) return;
     deployStreamActive.value = false;
-    const detail = e.message || "未知错误";
+    const detail = e.message || t("compose.unknownError");
     operationStatus.value = {
       status: "error",
-      message: `部署失败: ${detail}`,
+      message: t("compose.deployFailed", { detail }),
     };
-    ElMessage.error(`部署失败: ${detail}`);
+    ElMessage.error(t("compose.deployFailed", { detail }));
   } finally {
     saving.value = null;
   }
@@ -489,7 +488,6 @@ async function save(deploy: boolean) {
   tab-size: 2;
 }
 
-/* ── Live deploy terminal ───────────────────────────────────── */
 .deploy-terminal {
   border: 1px solid #30363d;
   border-radius: 6px;
@@ -534,7 +532,6 @@ async function save(deploy: boolean) {
   50% { opacity: 0; }
 }
 
-/* ── Operation status ────────────────────────────────────── */
 .compose-operation-status {
   display: flex;
   align-items: center;

@@ -1,43 +1,43 @@
 <template>
   <div class="audit-layout">
-    <header class="page-header">
+    <header class="ui-page-header">
       <div>
-        <div class="section-kicker">Audit Trail</div>
-        <h2 class="page-title">操作审计</h2>
+        <div class="ui-section-kicker">{{ t('audit.kicker') }}</div>
+        <h2 class="ui-page-title">{{ t('audit.title') }}</h2>
       </div>
-      <el-button class="page-action-button" @click="$router.push('/')">
-        <el-icon><ArrowLeft /></el-icon> 返回
+      <el-button class="ui-button ui-button--muted" @click="$router.push('/')">
+        <el-icon><ArrowLeft /></el-icon> {{ t('audit.back') }}
       </el-button>
     </header>
 
-    <div class="table-panel" v-if="logs.length > 0">
+    <div class="ui-panel table-panel" v-if="logs.length > 0">
       <el-table :data="logs" stripe style="width: 100%" :default-sort="{ prop: 'timestamp', order: 'descending' }">
-      <el-table-column label="时间" prop="timestamp" width="170" sortable>
+      <el-table-column :label="t('audit.time')" prop="timestamp" width="170" sortable>
         <template #default="{ row }">
           {{ formatTime(row.timestamp) }}
         </template>
       </el-table-column>
-      <el-table-column label="用户" prop="user" width="100" />
-      <el-table-column label="操作" prop="action" width="140">
+      <el-table-column :label="t('audit.user')" prop="user" width="100" />
+      <el-table-column :label="t('audit.action')" prop="action" width="140">
         <template #default="{ row }">
           <el-tag :type="actionType(row.action)" size="small">{{ actionLabel(row.action) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="主机" prop="host_id" width="120" />
-      <el-table-column label="Stack" prop="stack_name" width="140">
+      <el-table-column :label="t('audit.host')" prop="host_id" width="120" />
+      <el-table-column :label="t('audit.stack')" prop="stack_name" width="140">
         <template #default="{ row }">
           {{ row.stack_name || '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="结果" prop="result" width="80">
+      <el-table-column :label="t('audit.result')" prop="result" width="80">
         <template #default="{ row }">
           <el-tag :type="row.result === 'success' ? 'success' : 'danger'" size="small">
-            {{ row.result === 'success' ? '成功' : '失败' }}
+            {{ row.result === 'success' ? t('audit.success') : t('audit.failure') }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="IP" prop="ip_address" width="140" />
-      <el-table-column label="详情" prop="detail" min-width="200">
+      <el-table-column :label="t('audit.ip')" prop="ip_address" width="140" />
+      <el-table-column :label="t('audit.detail')" prop="detail" min-width="200">
         <template #default="{ row }">
           <span class="detail-text">{{ row.detail || '-' }}</span>
         </template>
@@ -45,13 +45,14 @@
       </el-table>
     </div>
 
-    <el-empty v-else description="暂无操作记录" />
+    <el-empty v-else :description="t('audit.noRecords')" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { ArrowLeft } from "@element-plus/icons-vue";
+import { useI18n } from "vue-i18n";
 import { apiClient } from "@/api/client";
 import dayjs from "dayjs";
 
@@ -68,16 +69,17 @@ interface AuditEntry {
 }
 
 const logs = ref<AuditEntry[]>([]);
+const { t } = useI18n();
 let limit = 50;
 
-const actionLabels: Record<string, string> = {
-  "stack.start": "启动 Stack",
-  "stack.stop": "停止 Stack",
-  "stack.restart": "重启 Stack",
-  "stack.update": "更新 Stack",
-  "stack.compose.save": "保存 Compose",
-  "stack.compose.deploy": "部署 Compose",
-  "update_checks.run": "检查更新",
+const auditActionKeys: Record<string, string> = {
+  "stack.start": "audit.action.stack.start",
+  "stack.stop": "audit.action.stack.stop",
+  "stack.restart": "audit.action.stack.restart",
+  "stack.update": "audit.action.stack.update",
+  "stack.compose.save": "audit.action.stack.composeSave",
+  "stack.compose.deploy": "audit.action.stack.composeDeploy",
+  "update_checks.run": "audit.action.updateChecksRun",
 };
 
 const actionTypes: Record<string, string> = {
@@ -91,7 +93,8 @@ const actionTypes: Record<string, string> = {
 };
 
 function actionLabel(action: string): string {
-  return actionLabels[action] || action;
+  const key = auditActionKeys[action];
+  return key ? t(key as any) : action;
 }
 
 function actionType(action: string): string {
@@ -122,40 +125,6 @@ onMounted(fetchLogs);
   flex-direction: column;
   gap: 16px;
 }
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--page-header-bg);
-  padding: 16px;
-}
-.page-title {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0;
-  color: var(--text-primary);
-}
-.section-kicker {
-  color: var(--accent-blue);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.page-action-button {
-  border-color: var(--border-subtle) !important;
-  background: var(--page-header-action-bg) !important;
-  color: var(--text-secondary) !important;
-}
-.page-action-button:hover,
-.page-action-button:focus-visible {
-  border-color: var(--border-strong) !important;
-  color: var(--text-primary) !important;
-}
 .detail-text {
   font-size: 12px;
   color: var(--text-secondary);
@@ -163,8 +132,5 @@ onMounted(fetchLogs);
 }
 .table-panel {
   overflow-x: auto;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--surface-panel);
 }
 </style>

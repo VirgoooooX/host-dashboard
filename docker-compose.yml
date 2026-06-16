@@ -1,5 +1,5 @@
-# Docker Dashboard v1
-# Multi-host Docker management dashboard.
+# Fleetge
+# Multi-host Docker fleet management console.
 #
 # Prerequisites:
 #   1. Generate JWT_SECRET: python -c "import secrets; print(secrets.token_hex(32))"
