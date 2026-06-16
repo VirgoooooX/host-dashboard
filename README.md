@@ -1,221 +1,350 @@
-# Fleetge
+# Fleetge - Docker Fleet Console
 
-多主机 Docker fleet 管理控制台。聚合 Dockge、docker-socket-proxy、host-metrics exporter 三路数据源，提供统一只读监控 + Stack 基础操作。
+Bilingual: [English](#english) | [简体中文](#简体中文)
 
-## 架构
+---
+
+## 简体中文
+
+多主机 Docker 容器集群及 Compose Stack 统一运维控制台。
+
+Fleetge 聚合了 `Dockge` / `fleetge-agent`、`docker-socket-proxy` 以及 `host-metrics` 数据源，在单容器内为您提供高效、低消耗的多主机状态只读监控、Compose Stack 启动/停止/重启/更新动作、容器资源占用（CPU/内存/网络/IO）实时看盘、镜像更新检测以及详细操作审计流水。
+
+### 项目预览 / Previews
+
+<p align="center">
+  <img src="assets/login.png" width="48%" alt="Login" />
+  <img src="assets/dashboard_preview1.png" width="48%" alt="Dashboard" />
+</p>
+
+<p align="center">
+  <img src="assets/dashboard_preview2.png" width="48%" alt="Stack Details" />
+  <img src="assets/dashboard_preview3.png" width="48%" alt="Metrics Monitor" />
+</p>
+
+<p align="center">
+  <img src="assets/add%20compose.png" width="48%" alt="Add Compose" />
+</p>
+
+---
+
+### 功能特性
+
+*   **主机健康总览**：实时在线状态探测、CPU/内存/磁盘/网络指标大盘、容器运行数与 Docker 版本展示。
+*   **多环境 Stack 管理**：支持 Stacks 的集中列示、生命周期操作（启动/重启/停止/删除/更新）、实时操作命令终端输出。
+*   **三种 Stack 运行状态适配**：
+    *   `已启动 (Active)`: 正常运行中的容器。
+    *   `已退出 (Exited)`: 容器已执行 `Stop` 停止但仍保留在宿主机。
+    *   `未启动 (Inactive)`: 容器已执行 `Down` 下线并被彻底清理。
+*   **轻量级 Agent 架构 (`fleetge-agent`)**：可在受管主机上单容器替代 Dockge，提供独立日志流推送、Docker 系统清理 (`prune`)、及基于 SSH-like 的 Websocket 实时 Compose 命令流。
+*   **容器资源精细监控**：单容器 CPU / 内存 / 网络接收与发送 / 磁盘 IO 读写频率秒级看盘与历史曲线。
+*   **镜像更新智能检测**：无需第三方复杂组件，自动对比本地镜像与远端 Registry Digest 差异，精准发现待更新版本。
+*   **安全可信与动作审计**：
+    *   安全只读连接：原生适配 `docker-socket-proxy` 的只读限制（`POST=0`）。
+    *   安全存储：受管主机的 API 凭据及 Token 均使用独立 `CREDENTIALS_KEY`（基于 Fernet 加密）安全落库。
+    *   安全登录：内置登录尝试次数限制防暴力破解。
+    *   写操作审计：所有通过控制台发起的 Stack 操作指令和系统清理动作均会计入审计日志，可精确追踪操作 IP、时间、人及执行结果。
+
+---
+
+### 系统架构
 
 ```
-用户浏览器 ─HTTPS→ Fleetge 单容器 (FastAPI + Vue 静态前端)
-                    ├─→ Dockge Socket.IO ─ stack 管理
-                    ├─→ docker-socket-proxy ─ Docker 只读状态
-                    └─→ host-metrics exporter ─ 主机指标
+用户浏览器 ─HTTPS→ Fleetge 单容器控制台 (FastAPI + Vue 3)
+                    ├─→ 受管主机 A: (Dockge API ─ Stack 读写控制)
+                    │             (docker-socket-proxy ─ 只读 API)
+                    │             (host-metrics exporter ─ 性能指标)
+                    │
+                    └─→ 受管主机 B: (fleetge-agent ─ 替代 Dockge + 监控融合)
 ```
 
-## 部署
+---
 
-### 1. 准备
+### 部署与配置
+
+#### 1. 密钥准备
+
+在部署控制台前，您需要生成必要的加密密钥：
 
 ```bash
-# 生成必要密钥
-python -c "import secrets; print(secrets.token_hex(32))"          # JWT_SECRET
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"  # CREDENTIALS_KEY
+# 1. 生成 JWT 签名密钥 (JWT_SECRET)
+python -c "import secrets; print(secrets.token_hex(32))"
 
-# 生成管理员密码 hash
+# 2. 生成远端密码解密密钥 (CREDENTIALS_KEY)
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# 3. 生成管理员登录密码的 Argon2 密码 Hash (ADMIN_PASSWORD_HASH)
 pip install pwdlib[argon2]
 python -c "from pwdlib import PasswordHash; print(PasswordHash.recommended().hash('your-admin-password'))"
 ```
 
-### 2. 配置
+#### 2. 配置环境变量
+
+复制 `.env.example` 并填入第一步中生成的密钥信息：
 
 ```bash
-cp .env.example .env           # 编辑 JWT_SECRET, CREDENTIALS_KEY, ADMIN_PASSWORD_HASH
-cp hosts.yaml.example data/hosts.yaml   # 编辑各主机连接信息
+cp .env.example .env
 ```
 
-如果是从现有本地数据切换到 Docker 部署，直接保留并挂载当前 `data/` 目录即可：
+> **注意：** `ADMIN_PASSWORD_HASH` 是 Argon2 字符串，其中包含 `$` 字符。在 `.env` 中**必须使用单引号**包裹该变量，否则 Docker Compose 可能会将 `$argon2id` 等解析为环境变量插值：
+> ```env
+> ADMIN_PASSWORD_HASH='$argon2id$v=19$m=65536,t=3,p=4$...'
+> ```
 
-```text
-data/
-  hosts.yaml
-  dashboard-local.db
-  dashboard-local.db-wal
-  dashboard-local.db-shm
-  stack_icons/
+#### 3. 配置主机列表 (`hosts.yaml`)
+
+创建并编辑主机配置文件 `data/hosts.yaml`：
+
+```bash
+cp hosts.yaml.example data/hosts.yaml
 ```
 
-镜像内不包含这些数据。`docker-compose.yml` 会把宿主机 `./data` 挂载到容器的 `/app/data`，服务默认读取：
-
-```env
-DATABASE_URL=sqlite:////app/data/dashboard-local.db
-HOST_CONFIG_PATH=/app/data/hosts.yaml
-```
-
-注意：`ADMIN_PASSWORD_HASH` 是 Argon2 字符串，里面包含 `$`。在 `.env` 里请保留单引号，否则 Docker Compose 会把 `$argon2id`、`$v`、`$m` 等当成环境变量插值：
-
-```env
-ADMIN_PASSWORD_HASH='$argon2id$v=19$m=65536,t=3,p=4$...'
-```
-
-`CREDENTIALS_KEY` 用于解密数据库里已保存的远端凭据。复用旧数据库时，优先沿用原来的 `CREDENTIALS_KEY`。
-
-**hosts.yaml** 结构：
+**配置结构示例 (Dockge 托管主机)：**
 
 ```yaml
 hosts:
-  - host_id: oc-chicago
-    display_name: OC Chicago
+  - host_id: ch-chicago
+    display_name: Chicago Prod Server
     dockge:
-      url: https://dockge.1989009.xyz
+      url: https://dockge.domain.com
       username: admin
       password: "dockge_password"
     docker_proxy:
-      url: https://docker.1989009.xyz
+      url: https://docker.domain.com
       username: "monitor"
       password: "proxy_password"
     metrics:
-      url: https://metrics.1989009.xyz
+      url: https://metrics.domain.com
       username: "monitor"
       password: "metrics_password"
     sort_order: 1
     enabled: true
 ```
 
-### 3. 部署
+**配置结构示例 (Agent 托管主机)：**
+
+如果使用更轻量、安全的 `fleetge-agent` 替代模式，配置极为精简：
+
+```yaml
+hosts:
+  - host_id: hk-agent
+    display_name: HK Agent Server
+    agent_url: http://hk-agent-ip:8080
+    agent_token: "your_agent_secret_token"
+    sort_order: 2
+    enabled: true
+```
+
+#### 4. 受管主机端组件部署
+
+根据您的受管主机模式，在受管主机上部署对应的辅助程序：
+
+##### 模式 A：使用 Fleetge Agent 托管 (推荐)
+
+在您的被监控主机上，创建并运行如下 `docker-compose.agent.yml`：
+
+```yaml
+services:
+  agent:
+    image: ghcr.io/virgoooox/fleetge-agent:latest
+    container_name: fleetge-agent
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - AGENT_TOKEN=your_agent_secret_token # 与主控台 hosts.yaml 配置的 token 保持一致
+      - STACKS_BASE_DIR=/opt/stacks         # Stack 项目的存放目录
+      - DISK_PATHS=/                        # 性能指标要监控的磁盘路径（支持逗号分隔多个路径）
+      - COLLECT_INTERVAL=5                  # 指标数据采集间隔 (秒)
+      - AGENT_LOG_LEVEL=info                # 运行日志级别 (可选: info / warning / error)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/stacks:/opt/stacks
+```
+
+##### 模式 B：Dockge 官方套件模式
+
+需要在受管主机上运行以下三个原生组件：
+1.  **Dockge**: 提供底层的 compose 操作和 websocket 命令桥接。
+2.  **docker-socket-proxy**: 暴露受保护的只读 API，启动环境变量必须包含 `INFO=1 VERSION=1 SYSTEM=1 IMAGES=1 EVENTS=0`。
+3.  **host-metrics exporter**: 我们项目提供的极简物理主机资源指标收集器。
+    *   部署方式：
+        ```bash
+        cd host-metrics-exporter
+        docker compose -f compose.example.yaml up -d
+        ```
+
+#### 5. 启动控制台
 
 ```bash
 docker compose up -d
 ```
 
-Fleetge 将在 `http://<host>:80` 可用。
+完成后在浏览器访问 `http://<ip>:80` 即可登入。
 
-### 4. 前置依赖
+---
 
-每台受管主机需要：
+## English
 
-| 组件 | 说明 | 部署位置 |
-|---|---|---|
-| **Dockge** | Compose stack 管理 | 每台主机一个 |
-| **docker-socket-proxy** | Docker 只读 HTTP API | 需增加 `INFO=1 VERSION=1 SYSTEM=1 IMAGES=1 EVENTS=0` |
-| **host-metrics exporter** | 主机实时指标 (CPU/内存/磁盘) | 每台主机一个 |
+A multi-host Docker fleet and Compose Stack management console.
 
-Exporter 部署示例：
+Fleetge consolidates data sources from `Dockge` / `fleetge-agent`, `docker-socket-proxy`, and `host-metrics exporter` to deliver a lightweight, real-time read-only status dashboard, container resource monitoring, image update notification, stack actions, and audit logs.
+
+### Feature Highlights
+
+*   **Host Health Overview**: Live ping status, real-time CPU/memory/disk network stats, running containers, and Docker versions.
+*   **Multi-Environment Stack Management**: Centralized stack listing, lifecycle operations (Start, Stop, Restart, Update, Delete), and live SSE stream command terminals.
+*   **Three Stack Running States**:
+    *   `Active`: Containers are running normally.
+    *   `Exited`: Containers are stopped via `Stop` but kept on the host.
+    *   `Inactive`: Containers are removed via `Down`, marking the stack inactive.
+*   **Lightweight Agent (`fleetge-agent`)**: A single-container replacement for Dockge on remote hosts, offering WebSocket-based compose actions, logs aggregation, and system prune operations.
+*   **Granular Container Monitoring**: Container CPU, memory, network transmit/receive, and disk I/O metrics read at a 1-second cadence.
+*   **Smart Image Update Detection**: Compares local image digests with remote registries directly to pinpoint updatable stacks without installing heavy third-party daemons.
+*   **Secure & Audited**:
+    *   Restricted API: Out-of-the-box support for `docker-socket-proxy` in read-only mode (`POST=0`).
+    *   Credential Encryption: Remote host keys and passwords are encrypted in transit and database using a dedicated Fernet keyset (`CREDENTIALS_KEY`).
+    *   Audit Logging: Tracks all write operations (actions, host names, IP addresses, usernames, execution results, and timestamps) for maximum compliance.
+
+---
+
+### Quick Start & Installation
+
+#### 1. Generate Encryption Keys
+
+Generate the security tokens and credential keys beforehand:
 
 ```bash
-cd host-metrics-exporter
-docker compose -f compose.example.yaml up -d
+# 1. Generate JWT signing secret
+python -c "import secrets; print(secrets.token_hex(32))"
+
+# 2. Generate Fernet key for database credentials
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# 3. Hash the admin password using Argon2
+pip install pwdlib[argon2]
+python -c "from pwdlib import PasswordHash; print(PasswordHash.recommended().hash('your-admin-password'))"
 ```
 
-## 功能
+#### 2. Environment Configuration
 
-- **主机总览**：在线状态、CPU/内存/磁盘利用率、Docker 版本
-- **Stack 管理**：列表查看、启动/停止/重启/更新
-- **容器状态**：列表、资源占用 (CPU/内存/网络/IO)
-- **镜像更新检测**：自动对比 registry digest 判断可更新镜像
-- **操作审计**：所有写操作记录时间戳和操作人
-- **日志查看**：Stack 日志尾部查看（200–5000 行）
-
-## 安全说明
-
-- 后端凭据使用独立 `CREDENTIALS_KEY` (Fernet) 加密存储，不与 JWT 密钥共用
-- 前端不保存任何远端凭据，仅持有 JWT token
-- docker-socket-proxy 保持 `POST=0`，拒绝写入
-- 登录 5 次失败后 IP 限速 15 分钟
-- 写操作需前端二次确认 + 后端动作名白名单
-
-## 路由
-
-| 路径 | 说明 |
-|---|---|
-| `/login` | 登录 |
-| `/` | 主机总览 |
-| `/hosts/:hostId` | 主机详情 |
-| `/updates` | 镜像更新 |
-| `/audit` | 审计日志 |
-| `/api/docs` | API 文档 (Swagger) |
-
-## 开发
+Copy the example environment file and insert your keys:
 
 ```bash
-# 后端
+cp .env.example .env
+```
+
+> **IMPORTANT:** Ensure `ADMIN_PASSWORD_HASH` is enclosed in single quotes `'` inside the `.env` file to prevent shell and compose parser interpolation of `$` signs.
+> ```env
+> ADMIN_PASSWORD_HASH='$argon2id$v=19$m=65536,t=3,p=4$...'
+> ```
+
+#### 3. Set Up Hosts (`hosts.yaml`)
+
+Initialize your cluster database config by making a copy of `hosts.yaml.example`:
+
+```bash
+cp hosts.yaml.example data/hosts.yaml
+```
+
+**Host Configuration Example (Dockge Managed Host):**
+
+```yaml
+hosts:
+  - host_id: oc-chicago
+    display_name: Chicago Prod Server
+    dockge:
+      url: https://dockge.domain.com
+      username: admin
+      password: "dockge_password"
+    docker_proxy:
+      url: https://docker.domain.com
+      username: "monitor"
+      password: "proxy_password"
+    metrics:
+      url: https://metrics.domain.com
+      username: "monitor"
+      password: "metrics_password"
+    sort_order: 1
+    enabled: true
+```
+
+**Host Configuration Example (Agent Managed Host):**
+
+```yaml
+hosts:
+  - host_id: hk-agent
+    display_name: HK Agent Server
+    agent_url: http://hk-agent-ip:8080
+    agent_token: "your_agent_secret_token"
+    sort_order: 2
+    enabled: true
+```
+
+#### 4. Run Agent Components on Remote Hosts
+
+Depending on your architecture, choose one of the options below to run on your monitored hosts:
+
+##### Option A: Using Fleetge Agent (Recommended)
+
+Save the following as `docker-compose.agent.yml` and deploy it on your remote machine:
+
+```yaml
+services:
+  agent:
+    image: ghcr.io/virgoooox/fleetge-agent:latest
+    container_name: fleetge-agent
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - AGENT_TOKEN=your_agent_secret_token
+      - STACKS_BASE_DIR=/opt/stacks
+      - DISK_PATHS=/
+      - COLLECT_INTERVAL=5
+      - AGENT_LOG_LEVEL=info # Optional log level: info / warning / error
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/stacks:/opt/stacks
+```
+
+##### Option B: Standard Dockge Setup
+
+Run the official `Dockge`, a configured `docker-socket-proxy` (ensure `INFO=1 VERSION=1 SYSTEM=1 IMAGES=1 EVENTS=0` is set), and our `host-metrics exporter`.
+*   Deploy metrics exporter:
+    ```bash
+    cd host-metrics-exporter
+    docker compose -f compose.example.yaml up -d
+    ```
+
+#### 5. Launch the Console
+
+```bash
+docker compose up -d
+```
+
+Visit the dashboard at `http://<your-host-ip>:80`.
+
+---
+
+## Local Development
+
+To run the project locally for testing or development:
+
+```bash
+# Backend setup
 cd backend
 pip install -r requirements.txt
-JWT_SECRET=dev CREDENTIALS_KEY=... ADMIN_PASSWORD_HASH=... uvicorn app.main:app --reload
+JWT_SECRET=dev CREDENTIALS_KEY=your_key ADMIN_PASSWORD_HASH=your_hash uvicorn app.main:app --reload
 
-# 前端
+# Frontend setup
 cd frontend
 npm install
 npm run dev
 ```
 
-前端开发服务器自动代理 `/api` 到 `127.0.0.1:8000`。
+---
 
-## GitHub Actions 镜像构建
+## License
 
-推送到 `main` 后，GitHub Actions 会构建并推送主应用多架构镜像到 GHCR：
-
-```text
-ghcr.io/<owner>/fleetge:latest
-```
-
-每次构建还会额外推送以 commit SHA 命名的标签，方便固定版本部署。`host-metrics-exporter` 有独立 workflow，会发布：
-
-```text
-ghcr.io/<owner>/host-dashboard-metrics-public:latest
-```
-
-### 正式发布流程
-
-本地执行一条命令完成版本 bump、前端构建、后端测试、commit、tag、push：
-
-```powershell
-.\scripts\release.ps1 -Version 0.1.1
-```
-
-脚本会更新：
-
-```text
-VERSION
-backend/app/version.py
-frontend/package.json
-frontend/package-lock.json
-```
-
-然后提交：
-
-```text
-chore: release v0.1.1
-```
-
-并推送 `v0.1.1` tag。GitHub 收到 tag 后会运行 Release workflow：
-
-1. 构建并推送主应用和 metrics exporter 两个多架构镜像。
-2. 给镜像打 `latest`、`0.1.1`、`v0.1.1`、`<commit-sha>` 标签。
-3. 自动创建 GitHub Release，并生成 release notes。
-
-如果只想本地 bump 和打 tag，不推送：
-
-```powershell
-.\scripts\release.ps1 -Version 0.1.1 -NoPush
-```
-
-### 使用 GHCR 镜像部署
-
-正式发布后可以用预构建镜像部署：
-
-```bash
-cp compose.ghcr.example.yml docker-compose.yml
-```
-
-在 `.env` 里增加：
-
-```env
-GHCR_OWNER=your-github-owner
-FLEETGE_VERSION=0.1.1
-```
-
-然后启动：
-
-```bash
-docker compose pull
-docker compose up -d
-```
+MIT License.
