@@ -66,7 +66,7 @@
             v-for="stack in filteredStacks"
             :key="stack.name"
             class="stack-nav-item"
-            :class="{ active: selectedStackName === stack.name, 'is-stopped': stack.status === 'stopped' }"
+            :class="{ active: selectedStackName === stack.name, 'is-stopped': stack.status === 'stopped' || stack.status === 'inactive' || stack.status === 'exited' }"
             type="button"
             @click="selectStack(stack.name)"
           >
@@ -114,7 +114,7 @@
             v-for="stack in filteredStacks"
             :key="stack.name"
             class="dockge-stack-card"
-            :class="{ 'is-stopped': stack.status === 'stopped' }"
+            :class="{ 'is-stopped': stack.status === 'stopped' || stack.status === 'inactive' || stack.status === 'exited' }"
             @click="selectStack(stack.name)"
           >
             <div class="dockge-stack-header">
@@ -198,7 +198,7 @@
       </div>
 
       <div v-else class="stack-detail-view">
-        <header class="detail-hero" :class="{ 'is-stopped': selectedStack.status === 'stopped' }">
+        <header class="detail-hero" :class="{ 'is-stopped': selectedStack.status === 'stopped' || selectedStack.status === 'inactive' || selectedStack.status === 'exited' }">
           <div class="detail-title-block">
             <div class="detail-title-row">
               <span class="dot-state detail-status-dot" :class="`dot-${stackStatusType(selectedStack.status)}`" />
@@ -994,19 +994,21 @@ const visibleMounts = computed(() =>
 );
 
 const runningStackCount = computed(() =>
-  props.stacks.filter((stack) => stack.status === "running").length
+  props.stacks.filter((stack) => stack.status === "running" || stack.status === "active").length
 );
 
 function statusLabel(status: string): string {
-  if (status === "running") return t("stackStatus.running");
-  if (status === "stopped") return t("stackStatus.stopped");
-  if (status === "partially running") return t("stackStatus.partial");
+  if (status === "running" || status === "active") return t("stackStatus.running");
+  if (status === "exited") return t("stackStatus.exited");
+  if (status === "stopped" || status === "inactive") return t("stackStatus.stopped");
+  if (status === "partially running" || status === "partial") return t("stackStatus.partial");
   return status || t("stackStatus.unknown");
 }
 
 function stackStatusType(status: string): string {
-  if (status === "running") return "running";
-  if (status === "stopped") return "stopped";
+  if (status === "running" || status === "active") return "running";
+  if (status === "exited") return "exited";
+  if (status === "stopped" || status === "inactive") return "stopped";
   return "partial";
 }
 
@@ -1898,6 +1900,11 @@ onUnmounted(() => {
   color: var(--text-secondary);
 }
 
+.status-exited {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--danger);
+}
+
 .status-partial {
   background: rgba(245, 158, 11, 0.15);
   color: var(--warning);
@@ -1916,6 +1923,11 @@ onUnmounted(() => {
 
 .dot-stopped {
   background: var(--text-muted);
+}
+
+.dot-exited {
+  background: var(--danger);
+  box-shadow: 0 0 7px var(--danger);
 }
 
 .dot-partial {

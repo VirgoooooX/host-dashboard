@@ -267,11 +267,13 @@ class AgentClient:
         self, name: str, action: str, log_queue: Optional[asyncio.Queue] = None
     ) -> dict:
         """Execute docker compose command on the agent and stream control output via WebSocket."""
-        # Convert start/stop/restart/update actions to Agent supported compose commands
+        # Convert start/stop/down/restart/update actions to Agent supported compose commands
         agent_action = action
         if action == "startStack" or action == "start":
             agent_action = "up"
         elif action == "stopStack" or action == "stop":
+            agent_action = "stop"
+        elif action == "downStack" or action == "down":
             agent_action = "down"
         elif action == "restartStack":
             agent_action = "restart"

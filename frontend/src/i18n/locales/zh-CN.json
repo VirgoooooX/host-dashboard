@@ -79,10 +79,12 @@
 
   "stack.action.start": "启动",
   "stack.action.stop": "停止",
+  "stack.action.down": "停止并置于非活动状态",
   "stack.action.restart": "重启",
   "stack.action.update": "更新",
   "stack.action.startStack": "启动 Stack",
   "stack.action.stopStack": "停止 Stack",
+  "stack.action.downStack": "停止并置于非活动状态 Stack",
   "stack.action.restartStack": "重启 Stack",
   "stack.action.updateStack": "更新 Stack",
   "stack.action.delete": "删除",
@@ -102,7 +104,8 @@
   "stack.confirm.failure": "{action}失败",
   "stack.confirm.unknownError": "未知错误",
   "stack.risk.start": "启动已停止的 Stack。",
-  "stack.risk.stop": "停止 Stack 中的所有容器。正在运行的服务将被中断。",
+  "stack.risk.stop": "停止 Stack 中的所有容器。容器将被停止但保留在宿主机，状态将变为已退出。",
+  "stack.risk.down": "停止并置于非活动状态。这会停止并清理 Stack 关联的所有容器，状态将变为停止并置于非活动状态。",
   "stack.risk.restart": "重启 Stack 中的所有容器。短暂中断后自动恢复。",
   "stack.risk.update": "拉取最新镜像并重新创建容器。镜像拉取可能耗时。",
 
@@ -121,7 +124,8 @@
   "stackOp.waitingOutput": "等待 Dockge 输出...",
 
   "stackStatus.running": "已启动",
-  "stackStatus.stopped": "已停止",
+  "stackStatus.exited": "已退出",
+  "stackStatus.stopped": "未启动",
   "stackStatus.partial": "部分运行",
   "stackStatus.unknown": "未知",
 
@@ -162,6 +166,7 @@
   "audit.noRecords": "暂无操作记录",
   "audit.action.stack.start": "启动 Stack",
   "audit.action.stack.stop": "停止 Stack",
+  "audit.action.stack.down": "停止并置于非活动状态 Stack",
   "audit.action.stack.restart": "重启 Stack",
   "audit.action.stack.update": "更新 Stack",
   "audit.action.stack.composeSave": "保存 Compose",

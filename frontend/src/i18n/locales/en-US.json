@@ -79,10 +79,12 @@
 
   "stack.action.start": "Start",
   "stack.action.stop": "Stop",
+  "stack.action.down": "Stop & Inactivate",
   "stack.action.restart": "Restart",
   "stack.action.update": "Update",
   "stack.action.startStack": "Start Stack",
   "stack.action.stopStack": "Stop Stack",
+  "stack.action.downStack": "Stop & Inactivate Stack",
   "stack.action.restartStack": "Restart Stack",
   "stack.action.updateStack": "Update Stack",
   "stack.action.delete": "Delete",
@@ -102,7 +104,8 @@
   "stack.confirm.failure": "{action} failed",
   "stack.confirm.unknownError": "Unknown error",
   "stack.risk.start": "Start the stopped stack.",
-  "stack.risk.stop": "Stop all containers in the stack. Running services will be interrupted.",
+  "stack.risk.stop": "Stop all containers in the stack. Containers will remain on the host in exited state.",
+  "stack.risk.down": "Stop and inactivate the stack. This will stop and remove all containers associated with the stack.",
   "stack.risk.restart": "Restart all containers in the stack. Brief interruption with automatic recovery.",
   "stack.risk.update": "Pull latest images and recreate containers. Image pull may take some time.",
 
@@ -120,8 +123,9 @@
   "stackOp.copyFailed": "Copy failed",
   "stackOp.waitingOutput": "Waiting for Dockge output...",
 
-  "stackStatus.running": "Running",
-  "stackStatus.stopped": "Stopped",
+  "stackStatus.running": "Active",
+  "stackStatus.exited": "Stopped",
+  "stackStatus.stopped": "Inactive",
   "stackStatus.partial": "Partially running",
   "stackStatus.unknown": "Unknown",
 
@@ -162,6 +166,7 @@
   "audit.noRecords": "No audit records",
   "audit.action.stack.start": "Start Stack",
   "audit.action.stack.stop": "Stop Stack",
+  "audit.action.stack.down": "Stop & Inactivate Stack",
   "audit.action.stack.restart": "Restart Stack",
   "audit.action.stack.update": "Update Stack",
   "audit.action.stack.composeSave": "Save Compose",

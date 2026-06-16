@@ -10,6 +10,7 @@ services:
       - STACKS_BASE_DIR=/opt/stacks
       - DISK_PATHS=${DISK_PATHS:-/}
       - COLLECT_INTERVAL=${COLLECT_INTERVAL:-5}
+      - AGENT_LOG_LEVEL=${AGENT_LOG_LEVEL:-info}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${HOST_STACKS_DIR:?err}:/opt/stacks

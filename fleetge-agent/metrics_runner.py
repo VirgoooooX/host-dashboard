@@ -3,13 +3,16 @@ import platform
 import sys
 import threading
 import time
+import logging
 from datetime import datetime, timezone
 from typing import Optional
+
+logger = logging.getLogger("fleetge-agent.metrics")
 
 try:
     import psutil
 except ImportError:
-    print("ERROR: psutil is required. Install with: pip install psutil", file=sys.stderr)
+    logger.error("psutil is required. Install with: pip install psutil")
     sys.exit(1)
 
 # Configuration from environment
@@ -138,7 +141,7 @@ def _collector_loop() -> None:
             with _cache_lock:
                 _cached_metrics = snapshot
         except Exception as exc:
-            print(f"[agent-metrics] Collection failed: {exc}", file=sys.stderr)
+            logger.error(f"[agent-metrics] Collection failed: {exc}")
         time.sleep(COLLECT_INTERVAL)
 
 

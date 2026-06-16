@@ -4,7 +4,7 @@
       v-for="stack in stacks"
       :key="stack.name"
       class="stack-card"
-      :class="{ 'is-stopped': stack.status === 'stopped' }"
+      :class="{ 'is-stopped': stack.status === 'stopped' || stack.status === 'inactive' || stack.status === 'exited' }"
       shadow="never"
     >
       <div class="stack-header">
@@ -16,7 +16,7 @@
           <span class="stack-name">{{ stack.name }}</span>
           <StatusIcon :status="stackStatusType(stack.status)" />
           <el-tag :type="stackTagType(stack.status)" size="small">
-            {{ stack.status }}
+            {{ statusLabel(stack.status) }}
           </el-tag>
         </div>
         <div class="stack-header-right">
@@ -257,16 +257,26 @@ function showLogTail(stackName: string) {
   }
 }
 
+function statusLabel(status: string): string {
+  if (status === "running" || status === "active") return t("stackStatus.running");
+  if (status === "exited") return t("stackStatus.exited");
+  if (status === "stopped" || status === "inactive") return t("stackStatus.stopped");
+  if (status === "partially running" || status === "partial") return t("stackStatus.partial");
+  return status || t("stackStatus.unknown");
+}
+
 function stackStatusType(status: string): string {
-  if (status === "running") return "online";
-  if (status === "stopped") return "offline";
+  if (status === "running" || status === "active") return "online";
+  if (status === "exited") return "offline";
+  if (status === "stopped" || status === "inactive") return "unknown";
   return "degraded";
 }
 
 function stackTagType(status: string): "success" | "warning" | "info" | "danger" {
-  if (status === "running") return "success";
-  if (status === "stopped") return "danger";
-  if (status === "partially running") return "warning";
+  if (status === "running" || status === "active") return "success";
+  if (status === "exited") return "danger";
+  if (status === "stopped" || status === "inactive") return "info";
+  if (status === "partially running" || status === "partial") return "warning";
   return "info";
 }
 

@@ -24,6 +24,18 @@
         <el-icon v-if="loading !== 'stop'"><VideoPause /></el-icon>
       </el-button>
     </el-tooltip>
+    <el-tooltip :content="t('stack.action.down')" placement="top">
+      <el-button
+        class="ui-icon-button ui-icon-button--small ui-icon-button--danger"
+        size="small"
+        :loading="loading === 'down'"
+        :disabled="loading !== null"
+        :aria-label="t('stack.action.downStack')"
+        @click="confirmAndRun('down', t('stack.action.down'))"
+      >
+        <el-icon v-if="loading !== 'down'"><SwitchButton /></el-icon>
+      </el-button>
+    </el-tooltip>
     <el-tooltip :content="t('stack.action.restart')" placement="top">
       <el-button
         class="ui-icon-button ui-icon-button--small"
@@ -68,7 +80,7 @@
 import { ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useI18n } from "vue-i18n";
-import { VideoPlay, VideoPause, Refresh, Top, Delete } from "@element-plus/icons-vue";
+import { VideoPlay, VideoPause, Refresh, Top, Delete, SwitchButton } from "@element-plus/icons-vue";
 import { streamSse } from "@/api/sse";
 import { apiClient } from "@/api/client";
 
@@ -104,6 +116,7 @@ const { t } = useI18n();
 const riskKeys: Record<string, string> = {
   start: "stack.risk.start",
   stop: "stack.risk.stop",
+  down: "stack.risk.down",
   restart: "stack.risk.restart",
   update: "stack.risk.update",
 };
@@ -111,6 +124,7 @@ const riskKeys: Record<string, string> = {
 const actionTimeouts: Record<string, number> = {
   start: 120000,
   stop: 120000,
+  down: 120000,
   restart: 120000,
   update: 240000,
 };

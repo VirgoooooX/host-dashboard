@@ -720,11 +720,26 @@ class SnapshotManager:
 
             # Overall stack status
             if not svcs:
-                overall = "unknown"
+                raw_status = s.get("status")
+                if raw_status in ("inactive", "stopped"):
+                    overall = "stopped"
+                elif raw_status == "exited":
+                    overall = "exited"
+                elif raw_status in ("active", "running"):
+                    overall = "running"
+                elif raw_status in ("partial", "partially running"):
+                    overall = "partially running"
+                elif raw_status is None:
+                    overall = "stopped"
+                else:
+                    overall = raw_status or "unknown"
             elif running == len(svcs):
                 overall = "running"
             elif running == 0:
-                overall = "stopped"
+                if any(svc.state == "exited" for svc in svcs):
+                    overall = "exited"
+                else:
+                    overall = "stopped"
             else:
                 overall = "partially running"
 
@@ -1006,7 +1021,10 @@ class SnapshotManager:
             if running == len(services):
                 overall = "running"
             elif running == 0:
-                overall = "stopped"
+                if any(svc.state == "exited" for svc in services):
+                    overall = "exited"
+                else:
+                    overall = "stopped"
             else:
                 overall = "partially running"
 

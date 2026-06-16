@@ -212,6 +212,7 @@ async def delete_stack(name: str):
 # Action to Docker Compose argument mapping
 ACTION_ARGS = {
     "up": ["compose", "up", "-d", "--remove-orphans"],
+    "stop": ["compose", "stop"],
     "down": ["compose", "down"],
     "restart": ["compose", "restart"],
     "pull": ["compose", "pull"],

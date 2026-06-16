@@ -35,6 +35,7 @@ router = APIRouter(
 ALLOWED_ACTIONS: dict[str, str] = {
     "start": "startStack",
     "stop": "stopStack",
+    "down": "downStack",
     "restart": "restartStack",
     "update": "updateStack",
 }
@@ -764,8 +765,9 @@ async def stack_action(
             else:
                 creds = decrypt_credentials(snap.host_config.dockge_password_encrypted)
                 dockge_conn = await dockge_pool.get_or_create(snap.host_config, creds["password"])
+                dockge_event = "stopStack" if socket_event == "downStack" else socket_event
                 task = asyncio.create_task(
-                    dockge_conn.stack_action(stack_name, socket_event, log_queue=log_queue)
+                    dockge_conn.stack_action(stack_name, dockge_event, log_queue=log_queue)
                 )
 
             while True:

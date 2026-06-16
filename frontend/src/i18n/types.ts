@@ -91,10 +91,12 @@ export interface I18nSchema {
   // ── Stack Actions ──────────────────────────────────────────
   "stack.action.start": string;
   "stack.action.stop": string;
+  "stack.action.down": string;
   "stack.action.restart": string;
   "stack.action.update": string;
   "stack.action.startStack": string;
   "stack.action.stopStack": string;
+  "stack.action.downStack": string;
   "stack.action.restartStack": string;
   "stack.action.updateStack": string;
   "stack.action.delete": string;
@@ -115,6 +117,7 @@ export interface I18nSchema {
   "stack.confirm.unknownError": string;
   "stack.risk.start": string;
   "stack.risk.stop": string;
+  "stack.risk.down": string;
   "stack.risk.restart": string;
   "stack.risk.update": string;
 
@@ -135,6 +138,7 @@ export interface I18nSchema {
 
   // ── Stack Status Labels ────────────────────────────────────
   "stackStatus.running": string;
+  "stackStatus.exited": string;
   "stackStatus.stopped": string;
   "stackStatus.partial": string;
   "stackStatus.unknown": string;
@@ -179,6 +183,7 @@ export interface I18nSchema {
   "audit.noRecords": string;
   "audit.action.stack.start": string;
   "audit.action.stack.stop": string;
+  "audit.action.stack.down": string;
   "audit.action.stack.restart": string;
   "audit.action.stack.update": string;
   "audit.action.stack.composeSave": string;

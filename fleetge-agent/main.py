@@ -1,5 +1,25 @@
 import os
 import sys
+import logging
+
+# Configure Logging
+LOG_LEVEL_STR = os.environ.get("AGENT_LOG_LEVEL", os.environ.get("LOG_LEVEL", "INFO")).upper()
+LEVELS = {
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "WARN": logging.WARNING,
+    "WARING": logging.WARNING,
+    "ERROR": logging.ERROR,
+}
+log_level = LEVELS.get(LOG_LEVEL_STR, logging.INFO)
+
+logger = logging.getLogger("fleetge-agent")
+logger.setLevel(log_level)
+if not logger.handlers:
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    logger.addHandler(handler)
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
 from starlette.requests import HTTPConnection
@@ -12,13 +32,9 @@ AGENT_TOKEN = os.environ.get("AGENT_TOKEN", "").strip()
 AGENT_REQUIRE_TOKEN = os.environ.get("AGENT_REQUIRE_TOKEN", "").strip().lower() == "true"
 
 if not AGENT_TOKEN:
-    print(
-        "WARNING: AGENT_TOKEN is not set. Authentication is disabled. "
-        "Set AGENT_TOKEN to secure this agent.",
-        file=sys.stderr,
-    )
+    logger.warning("AGENT_TOKEN is not set. Authentication is disabled. Set AGENT_TOKEN to secure this agent.")
     if AGENT_REQUIRE_TOKEN:
-        print("ERROR: AGENT_REQUIRE_TOKEN=true but AGENT_TOKEN is empty.", file=sys.stderr)
+        logger.error("AGENT_REQUIRE_TOKEN=true but AGENT_TOKEN is empty.")
         sys.exit(1)
 
 
@@ -53,7 +69,7 @@ async def verify_token(connection: HTTPConnection):
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Startup: begin metrics collection.  Shutdown: close Docker proxy client."""
-    print("[agent] Starting Fleetge Agent metrics collector thread...")
+    logger.info("Starting Fleetge Agent metrics collector thread...")
     start_metrics_collector()
     yield
     await docker_client.close_docker_client()
