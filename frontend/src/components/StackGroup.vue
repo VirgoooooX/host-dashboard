@@ -26,30 +26,15 @@
           <StackActions
             :host-id="hostId"
             :stack-name="stack.name"
+            show-compose
+            show-logs
             @refresh="$emit('refresh')"
             @operation-start="onOperationStart(stack.name, $event)"
             @terminal-chunk="onTerminalChunk(stack.name, $event)"
             @operation-complete="onOperationComplete(stack.name, $event)"
+            @compose="openCompose(stack.name)"
+            @logs="openLogs(stack.name)"
           />
-          <el-button
-            class="ui-button ui-button--compact"
-            size="small"
-            :aria-label="t('stackGroup.editCompose')"
-            @click="openCompose(stack.name)"
-          >
-            <el-icon><EditPen /></el-icon>
-            Compose
-          </el-button>
-          <el-tooltip :content="t('stackGroup.viewLogs')" placement="top">
-            <el-button
-              class="ui-icon-button ui-icon-button--small"
-              size="small"
-              :aria-label="t('stackGroup.viewLogs')"
-              @click="openLogs(stack.name)"
-            >
-              <el-icon><Document /></el-icon>
-            </el-button>
-          </el-tooltip>
         </div>
       </div>
 

@@ -328,9 +328,9 @@ class SnapshotManager:
 
             if name == "structure":
                 try:
-                    # If we have active connections, we poll every 10 seconds.
-                    # If we don't, we wait for a connection to be made (event set) or the low-frequency interval to pass.
-                    timeout = 10.0 if self._active_connections > 0 else float(interval)
+                    # Active connections: fast poll at DOCKER_POLL_INTERVAL.
+                    # Idle: wait for a connection event or BACKGROUND_STRUCTURE_REFRESH_INTERVAL.
+                    timeout = float(get_settings().DOCKER_POLL_INTERVAL) if self._active_connections > 0 else float(interval)
                     self._connection_event.clear()
                     if self._active_connections > 0:
                         await asyncio.sleep(timeout)

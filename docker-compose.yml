@@ -1,12 +1,10 @@
 # Fleetge
 # Multi-host Docker fleet management console.
 #
-# Secrets are injected via shell environment or a .env file in the
-# project directory (docker compose reads .env automatically).
+# 部署前修改下方 environment 中标注"必填"的三个 Secret。
 #
 # Usage:
-#   cp hosts.yaml.example data/hosts.yaml   # edit with your host configs
-#   export JWT_SECRET=... CREDENTIALS_KEY=... ADMIN_PASSWORD_HASH=...
+#   cp hosts.yaml.example data/hosts.yaml   # 编辑你的 Host 配置
 #   docker compose up -d
 
 services:
@@ -17,17 +15,43 @@ services:
     container_name: fleetge
     restart: unless-stopped
     environment:
-      # ── Secrets (set via shell env or .env at deploy time) ────────
-      JWT_SECRET: ${JWT_SECRET}
-      CREDENTIALS_KEY: ${CREDENTIALS_KEY}
-      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
-      # ── Runtime config ────────────────────────────────────────────
+      # ═══════════════════════════════════════════════════════════
+      # 必填 — 部署前修改
+      # ═══════════════════════════════════════════════════════════
+      # JWT 签名密钥: python -c "import secrets; print(secrets.token_hex(32))"
+      JWT_SECRET: changeme_generate_a_random_64_char_hex_string
+      # 凭证加密密钥: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      CREDENTIALS_KEY: changeme_generate_with_fernet_generate_key
+      # 管理员密码 Argon2 哈希: python -c "from pwdlib import PasswordHash; print(PasswordHash.recommended().hash('your-password'))"
+      ADMIN_PASSWORD_HASH: changeme_argon2_hash
+
+      # ═══════════════════════════════════════════════════════════
+      # 路径配置（通常不需修改）
+      # ═══════════════════════════════════════════════════════════
       DATABASE_URL: sqlite:////app/data/dashboard-local.db
       HOST_CONFIG_PATH: /app/data/hosts.yaml
+
+      # ═══════════════════════════════════════════════════════════
+      # 轮询间隔（秒），有默认值，可按需调整
+      # ═══════════════════════════════════════════════════════════
+      # SSE 指标推送到前端的间隔，默认 1 秒
+      METRICS_STREAM_INTERVAL: 1
+      # 有前端连接时 Docker 容器/Stack 结构刷新间隔，默认 10 秒
+      DOCKER_POLL_INTERVAL: 10
+      # 无前端连接时的空闲结构刷新间隔，默认 3600 秒（1 小时）
+      BACKGROUND_STRUCTURE_REFRESH_INTERVAL: 3600
+      # 镜像更新检查结果缓存时间，默认 43200 秒（12 小时）
+      UPDATE_CHECK_INTERVAL: 43200
+
+      # ═══════════════════════════════════════════════════════════
+      # 其他可选参数
+      # ═══════════════════════════════════════════════════════════
+      # 日志级别: debug / info / warning / error，默认 info
+      LOG_LEVEL: info
+
     volumes:
       - ./data:/app/data
     ports:
-      # The user-facing port — put this behind Lucky / nginx with HTTPS if needed.
       - "80:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]

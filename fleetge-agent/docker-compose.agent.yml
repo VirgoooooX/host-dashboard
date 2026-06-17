@@ -1,16 +1,42 @@
+# Fleetge Agent — 部署到每台被管理的 Host 上
+#
+# Usage:
+#   docker compose -f docker-compose.agent.yml up -d
+
 services:
   agent:
     image: ghcr.io/virgoooox/fleetge-agent:latest
     container_name: fleetge-agent
     restart: unless-stopped
     ports:
-      - "${AGENT_PORT:-8080}:8080"
+      - "8080:8080"
     environment:
-      - AGENT_TOKEN=${AGENT_TOKEN:?err}
-      - STACKS_BASE_DIR=/opt/stacks
-      - DISK_PATHS=${DISK_PATHS:-/}
-      - COLLECT_INTERVAL=${COLLECT_INTERVAL:-5}
-      - AGENT_LOG_LEVEL=${AGENT_LOG_LEVEL:-info}
+      # ═══════════════════════════════════════════════════════════
+      # 必填 — 部署前修改
+      # ═══════════════════════════════════════════════════════════
+      # Agent API 鉴权令牌，后端 hosts.yaml 中 agent.token 需与此一致
+      AGENT_TOKEN: your-secure-token-here
+      # Compose 文件存放的宿主机目录
+      STACKS_BASE_DIR: /opt/stacks
+
+      # ═══════════════════════════════════════════════════════════
+      # 可选 — 有默认值，可按需调整
+      # ═══════════════════════════════════════════════════════════
+      # psutil 指标采集间隔，默认 5 秒
+      COLLECT_INTERVAL: 5
+      # 监控的磁盘挂载点，逗号分隔，默认 /
+      DISK_PATHS: /
+      # 日志级别: DEBUG / INFO / WARNING / ERROR，默认 INFO
+      AGENT_LOG_LEVEL: INFO
+
+      # ═══════════════════════════════════════════════════════════
+      # 高级 — 通常不需修改
+      # ═══════════════════════════════════════════════════════════
+      # Docker daemon 地址，留空自动检测（Unix socket 或 Windows 127.0.0.1:2375）
+      # DOCKER_HOST: unix:///var/run/docker.sock
+      # 强制要求 Token 鉴权，为空时拒绝启动（默认 false）
+      # AGENT_REQUIRE_TOKEN: false
+
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${HOST_STACKS_DIR:?err}:/opt/stacks
+      - /opt/stacks:/opt/stacks

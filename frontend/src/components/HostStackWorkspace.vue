@@ -133,31 +133,15 @@
                 <StackActions
                   :host-id="hostId"
                   :stack-name="stack.name"
+                  show-compose
+                  show-detail
                   @refresh="$emit('refresh')"
                   @operation-start="onOperationStart(stack.name, $event)"
                   @terminal-chunk="onTerminalChunk(stack.name, $event)"
                   @operation-complete="onOperationComplete(stack.name, $event)"
+                  @compose="openCompose(stack.name)"
+                  @detail="selectStack(stack.name)"
                 />
-                <el-tooltip :content="t('workspace.editCompose')" placement="top">
-                  <el-button
-                    class="ui-button ui-button--compact compact-action-button wide"
-                    size="small"
-                    @click="openCompose(stack.name)"
-                  >
-                    <el-icon><EditPen /></el-icon>
-                    Compose
-                  </el-button>
-                </el-tooltip>
-                <el-tooltip :content="t('workspace.viewDetail')" placement="top">
-                  <el-button
-                    class="ui-icon-button ui-icon-button--small compact-action-button"
-                    size="small"
-                    :aria-label="t('workspace.viewDetail')"
-                    @click="selectStack(stack.name)"
-                  >
-                    <el-icon><Document /></el-icon>
-                  </el-button>
-                </el-tooltip>
               </div>
             </div>
 
@@ -222,15 +206,13 @@
             <StackActions
               :host-id="hostId"
               :stack-name="selectedStack.name"
+              show-compose
               @refresh="$emit('refresh')"
               @operation-start="onOperationStart(selectedStack.name, $event)"
               @terminal-chunk="onTerminalChunk(selectedStack.name, $event)"
               @operation-complete="onOperationComplete(selectedStack.name, $event)"
+              @compose="openCompose(selectedStack.name)"
             />
-            <el-button class="ui-button detail-compose-button" @click="openCompose(selectedStack.name)">
-              <el-icon><EditPen /></el-icon>
-              Compose
-            </el-button>
           </div>
         </header>
 
