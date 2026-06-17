@@ -185,8 +185,7 @@
 }
 
 /* ── Dashboard ─────────────────────────────────────────────────── */
-[data-theme="light"] .command-copy,
-[data-theme="light"] .summary-grid {
+[data-theme="light"] .command-copy {
   background:
     linear-gradient(135deg, rgba(37, 99, 235, 0.04), transparent 36%),
     rgba(255, 255, 255, 0.88);

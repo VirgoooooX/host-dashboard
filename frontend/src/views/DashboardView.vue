@@ -2,28 +2,44 @@
   <div class="dashboard-layout">
     <section class="command-strip">
       <div class="command-copy">
-        <div class="ui-section-kicker">{{ t('dashboard.kicker') }}</div>
-        <h2>{{ t('dashboard.title') }}</h2>
-        <p>{{ t('dashboard.description') }}</p>
+        <ClusterHealthBg />
+        <div class="command-copy-content">
+          <div class="ui-section-kicker">{{ t('dashboard.kicker') }}</div>
+          <h2>{{ t('dashboard.title') }}</h2>
+          <p>{{ t('dashboard.description') }}</p>
+        </div>
+        <img src="/cloud_banner.png" alt="Cloud Banner" class="command-banner" />
       </div>
       <div class="summary-grid">
         <div class="summary-tile">
-          <span class="summary-label">{{ t('dashboard.onlineHosts') }}</span>
+          <span class="summary-label">
+            <el-icon><Monitor /></el-icon>
+            {{ t('dashboard.onlineHosts') }}
+          </span>
           <strong>{{ store.onlineCount }}</strong>
           <small>/ {{ store.hosts.length }}</small>
         </div>
         <div class="summary-tile">
-          <span class="summary-label">{{ t('dashboard.runningContainers') }}</span>
+          <span class="summary-label">
+            <el-icon><CircleCheckFilled /></el-icon>
+            {{ t('dashboard.runningContainers') }}
+          </span>
           <strong>{{ store.runningContainers }}</strong>
           <small>{{ t('dashboard.running') }}</small>
         </div>
         <div class="summary-tile">
-          <span class="summary-label">{{ t('dashboard.stoppedContainers') }}</span>
+          <span class="summary-label">
+            <el-icon><CircleCloseFilled /></el-icon>
+            {{ t('dashboard.stoppedContainers') }}
+          </span>
           <strong>{{ stoppedContainers }}</strong>
           <small>{{ t('dashboard.stopped') }}</small>
         </div>
         <button class="summary-tile critical" type="button" @click="router.push('/updates')">
-          <span class="summary-label">{{ t('dashboard.updatableImages') }}</span>
+          <span class="summary-label">
+            <el-icon><Download /></el-icon>
+            {{ t('dashboard.updatableImages') }}
+          </span>
           <strong>{{ store.updateCount }}</strong>
           <small>{{ t('dashboard.updates') }}</small>
         </button>
@@ -63,6 +79,8 @@ import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useDashboardStore } from "@/stores/dashboard";
 import HostCard from "@/components/HostCard.vue";
+import ClusterHealthBg from "@/components/ClusterHealthBg.vue";
+import { Monitor, CircleCheckFilled, CircleCloseFilled, Download } from "@element-plus/icons-vue";
 
 const router = useRouter();
 const store = useDashboardStore();
@@ -93,13 +111,45 @@ function goToHost(hostId: string) {
   gap: 16px;
 }
 
-.command-copy,
-.summary-grid {
+.command-copy {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: var(--dash-command-bg);
   padding: 18px;
 }
+
+.command-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  background: var(--dash-command-bg);
+}
+
+.command-copy-content {
+  position: relative;
+  z-index: 1;
+}
+
+.command-banner {
+  position: absolute;
+  right: -10px;
+  bottom: -15px;
+  height: 100%;
+  width: auto;
+  pointer-events: none;
+  opacity: 0.95;
+  z-index: 0;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.command-copy:hover .command-banner {
+  transform: scale(1.06) translate(-4px, -4px) rotate(-1deg);
+}
+
 
 .command-copy h2 {
   margin: 0;
@@ -110,22 +160,30 @@ function goToHost(hostId: string) {
 }
 
 .command-copy p {
-  max-width: 560px;
+  max-width: 420px;
   margin: 10px 0 0;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.7;
 }
 
+@media (max-width: 500px) {
+  .command-banner {
+    opacity: 0.5;
+    height: 100%;
+    right: -10px;
+    bottom: -15px;
+  }
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  padding: 12px;
+  gap: 16px;
 }
 
 .summary-tile {
-  min-height: 92px;
+  min-height: 150px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -134,7 +192,7 @@ function goToHost(hostId: string) {
   border-radius: 7px;
   background: var(--dash-tile-bg);
   color: var(--text-primary);
-  padding: 12px;
+  padding: 16px 14px;
   text-align: left;
 }
 
@@ -162,6 +220,17 @@ button.summary-tile {
 .summary-label {
   color: var(--text-secondary);
   font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.summary-label .el-icon {
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
 }
 
 .summary-tile small {
