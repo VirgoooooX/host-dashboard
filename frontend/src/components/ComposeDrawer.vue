@@ -1,11 +1,13 @@
 <template>
   <el-drawer
     :model-value="visible"
-    size="72%"
+    :size="drawerSize"
     class="compose-drawer"
     :with-header="false"
     @close="$emit('close')"
   >
+    <!-- Drag handle -->
+    <div class="compose-drawer__resize-handle" @mousedown="startDrag" />
     <div class="compose-editor">
       <header class="compose-editor__header">
         <div>
@@ -65,23 +67,21 @@
         class="compose-tabs"
       >
         <el-tab-pane :label="composeFileName" name="yaml">
-          <el-input
+          <MonacoEditor
             v-model="composeYaml"
-            type="textarea"
-            :disabled="!canUseEditor || !!saving"
-            :autosize="{ minRows: 24, maxRows: 42 }"
-            spellcheck="false"
-            class="compose-textarea code"
+            language="yaml"
+            height="520px"
+            :readonly="!canUseEditor"
+            :disabled="!!saving"
           />
         </el-tab-pane>
         <el-tab-pane label=".env" name="env">
-          <el-input
+          <MonacoEditor
             v-model="composeEnv"
-            type="textarea"
-            :disabled="!canUseEditor || !!saving"
-            :autosize="{ minRows: 16, maxRows: 32 }"
-            spellcheck="false"
-            class="compose-textarea code"
+            language="ini"
+            height="400px"
+            :readonly="!canUseEditor"
+            :disabled="!!saving"
           />
         </el-tab-pane>
       </el-tabs>
@@ -115,6 +115,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onUnmounted } from "vue";
+import MonacoEditor from "@/components/MonacoEditor.vue";
 import { ElMessage } from "element-plus";
 import { useI18n } from "vue-i18n";
 import { Loading, SuccessFilled, WarningFilled, DocumentCopy } from "@element-plus/icons-vue";
@@ -136,6 +137,54 @@ const emit = defineEmits<{ close: []; saved: [] }>();
 
 const { t } = useI18n();
 const { confirm } = useConfirm();
+
+// ── Draggable drawer width ──────────────────────────────────────────────────
+const STORAGE_KEY = "compose-drawer-width-pct";
+const MIN_PX = 360;
+const MAX_VW = 0.9;
+const DEFAULT_PCT = 52;
+
+function clampPct(pct: number) {
+  const minPct = (MIN_PX / window.innerWidth) * 100;
+  const maxPct = MAX_VW * 100;
+  return Math.min(maxPct, Math.max(minPct, pct));
+}
+
+const drawerWidthPct = ref<number>(
+  (() => {
+    try {
+      const stored = parseFloat(localStorage.getItem(STORAGE_KEY) || "");
+      return isNaN(stored) ? DEFAULT_PCT : clampPct(stored);
+    } catch {
+      return DEFAULT_PCT;
+    }
+  })()
+);
+
+const drawerSize = computed(() => `${drawerWidthPct.value}%`);
+
+function startDrag(e: MouseEvent) {
+  e.preventDefault();
+  const startX = e.clientX;
+  const startPct = drawerWidthPct.value;
+
+  function onMove(ev: MouseEvent) {
+    // Drawer opens from the right, so dragging left = wider
+    const deltaPx = startX - ev.clientX;
+    const deltaPct = (deltaPx / window.innerWidth) * 100;
+    drawerWidthPct.value = clampPct(startPct + deltaPct);
+  }
+
+  function onUp() {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+    try { localStorage.setItem(STORAGE_KEY, String(drawerWidthPct.value)); } catch {}
+  }
+
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 const loading = ref(false);
 const saving = ref<"save" | "deploy" | null>(null);
@@ -569,6 +618,24 @@ async function copyDeployOutput() {
 </script>
 
 <style scoped>
+/* ── Drag handle ── */
+.compose-drawer__resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background 0.15s;
+}
+.compose-drawer__resize-handle:hover,
+.compose-drawer__resize-handle:active {
+  background: var(--accent-blue, #3b82f6);
+  opacity: 0.35;
+}
+
 .compose-editor {
   display: flex;
   flex-direction: column;
@@ -645,12 +712,7 @@ async function copyDeployOutput() {
   min-height: 0;
 }
 
-.compose-textarea :deep(textarea) {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.55;
-  tab-size: 2;
-}
+/* Monaco editor handles its own typography */
 
 .deploy-terminal {
   display: flex;
