@@ -10,23 +10,20 @@ from typing import Optional
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pwdlib import PasswordHash
 
 from app.config import get_settings
 
-# ── Password hashing ─────────────────────────────────────────────────────
-
-password_hasher = PasswordHash.recommended()
+# ── Password verification ─────────────────────────────────────────────────
 
 
 def hash_password(password: str) -> str:
-    """Hash a plain-text password with Argon2 (recommended)."""
-    return password_hasher.hash(password)
+    """Return the plain-text password directly (no hashing)."""
+    return password
 
 
-def verify_password(plain: str, hashed: str) -> bool:
-    """Verify a plain-text password against its Argon2 hash."""
-    return password_hasher.verify(plain, hashed)
+def verify_password(plain: str, expected: str) -> bool:
+    """Verify a plain-text password against the expected plain-text password."""
+    return plain == expected
 
 
 # ── JWT ─────────────────────────────────────────────────────────────────

@@ -72,9 +72,8 @@ python -c "import secrets; print(secrets.token_hex(32))"
 # B. 生成 Fernet 强加密密钥 (用于加密落库的主机密码/Token)
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
-# C. 生成管理员登录密码的 Argon2 哈希 (替换 'your-password' 为您的强密码)
-pip install pwdlib[argon2]
-python -c "from pwdlib import PasswordHash; print(PasswordHash.recommended().hash('your-password'))"
+# C. 设置管理员登录密码 (明文)
+# 直接将密码填入 docker-compose.yml 即可。
 ```
 
 #### 2. 编写配置文件
@@ -96,7 +95,7 @@ services:
       # 填入生成的密钥与哈希
       JWT_SECRET: "替换为步骤A生成的32位十六进制字符串"
       CREDENTIALS_KEY: "替换为步骤B生成的Fernet密钥"
-      ADMIN_PASSWORD_HASH: '替换为步骤C生成的Argon2密码哈希' # 注意：必须用单引号包裹！
+      ADMIN_PASSWORD: "替换为您的强密码"
       
       # 配置文件与数据库路径
       DATABASE_URL: sqlite:////app/data/dashboard-local.db
@@ -236,9 +235,8 @@ python -c "import secrets; print(secrets.token_hex(32))"
 # B. Generate a Fernet Key (for database credentials encryption)
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
-# C. Generate the Argon2 password hash for the 'admin' account (replace 'your-password')
-pip install pwdlib[argon2]
-python -c "from pwdlib import PasswordHash; print(PasswordHash.recommended().hash('your-password'))"
+# C. Set the plain-text administrator login password.
+# Simply fill the password in docker-compose.yml.
 ```
 
 #### 2. Create the Compose Config
@@ -258,7 +256,7 @@ services:
       # Inject your generated secrets
       JWT_SECRET: "replace_with_jwt_secret_from_step_A"
       CREDENTIALS_KEY: "replace_with_fernet_key_from_step_B"
-      ADMIN_PASSWORD_HASH: 'replace_with_argon2_hash_from_step_C' # Note: Wrap in single quotes!
+      ADMIN_PASSWORD: "replace_with_your_strong_password"
       
       # Database and configurations
       DATABASE_URL: sqlite:////app/data/dashboard-local.db
@@ -343,7 +341,7 @@ The dashboard console supports the following environment variables:
 | :--- | :--- | :--- | :--- |
 | `JWT_SECRET` | String | *Required / 必填* | Hex signature key for JSON Web Tokens. / 用于 JWT 鉴权的 64 位十六进制签名密钥。 |
 | `CREDENTIALS_KEY` | String | *Required / 必填* | Fernet symmetric key to encrypt remote passwords/tokens in the DB. / 数据库敏感凭证的 Fernet 对称加密密钥。 |
-| `ADMIN_PASSWORD_HASH`| String | *Required / 必填* | Argon2 hash value of the administrator login password. / 管理员登录密码的 Argon2 哈希值。 |
+| `ADMIN_PASSWORD`      | String | *Required / 必填* | Plain-text administrator login password. / 管理员登录密码的明文。 |
 | `DATABASE_URL` | String | `sqlite:////app/data/dashboard-local.db` | Connection URI for SQLAlchemy. / 数据库连接 URI，支持 SQLite/PostgreSQL 等。 |
 | `HOST_CONFIG_PATH` | String | `/app/data/hosts.yaml` | Host YAML file path. / 主机静态配置文件路径。 |
 | `METRICS_STREAM_INTERVAL` | Integer | `1` | Stream update interval for metrics in seconds. / SSE 实时性能指标推送间隔（秒）。 |

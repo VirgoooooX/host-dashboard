@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 # Set env vars before importing app
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 os.environ.setdefault("CREDENTIALS_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
-os.environ.setdefault("ADMIN_PASSWORD_HASH", "test-password-hash")
+os.environ.setdefault("ADMIN_PASSWORD", "test-password")
 
 from app.main import app
 from app.services.snapshot import snapshot_manager, HostSnapshot

@@ -9,7 +9,7 @@ os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 os.environ.setdefault(
     "CREDENTIALS_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 )
-os.environ.setdefault("ADMIN_PASSWORD_HASH", "test-password-hash")
+os.environ.setdefault("ADMIN_PASSWORD", "test-password")
 os.environ.setdefault(
     "DATABASE_URL",
     f"sqlite:///{os.path.join(tempfile.gettempdir(), 'host_dashboard_test.db')}",

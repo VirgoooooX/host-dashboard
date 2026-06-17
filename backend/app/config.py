@@ -20,7 +20,9 @@ _ROOT_DATA_DIR = str(_ROOT / "data")
 
 class Settings:
     # ── Auth ──────────────────────────────────────────────────────────
-    JWT_SECRET: str = os.environ.get("JWT_SECRET", "")
+    JWT_SECRET: str = os.environ.get(
+        "JWT_SECRET", "dev_jwt_secret_69a74d6598edc99803d0fc648d68c383acb94c9c1e68d"
+    )
     JWT_ALGORITHM: str = "HS256"
 
     @property
@@ -34,11 +36,13 @@ class Settings:
         from app.services.settings_service import get_setting_value
         return get_setting_value("ADMIN_USERNAME", "admin")
 
-    ADMIN_PASSWORD_HASH: str = os.environ.get("ADMIN_PASSWORD_HASH", "")
+    ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD", "admin")
 
     # ── Credential encryption ─────────────────────────────────────────
     # 32-byte URL-safe base64 Fernet key, separate from JWT_SECRET.
-    CREDENTIALS_KEY: str = os.environ.get("CREDENTIALS_KEY", "")
+    CREDENTIALS_KEY: str = os.environ.get(
+        "CREDENTIALS_KEY", "zijhcV4hiZFML8CgiQGo7VjuFPutHcrch5QhYLCqX7s="
+    )
 
     # ── Database ──────────────────────────────────────────────────────
     DATABASE_URL: str = os.environ.get(
@@ -101,8 +105,8 @@ class Settings:
                     "CREDENTIALS_KEY is not valid URL-safe base64. "
                     "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
                 )
-        if not self.ADMIN_PASSWORD_HASH:
-            errors.append("ADMIN_PASSWORD_HASH is required (use pwdlib to hash the admin password)")
+        if not self.ADMIN_PASSWORD:
+            errors.append("ADMIN_PASSWORD is required")
         if errors:
             raise ValueError("Configuration errors:\n  - " + "\n  - ".join(errors))
 

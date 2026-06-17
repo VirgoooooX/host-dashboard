@@ -19,11 +19,11 @@ services:
       # 必填 — 部署前修改
       # ═══════════════════════════════════════════════════════════
       # JWT 签名密钥: python -c "import secrets; print(secrets.token_hex(32))"
-      JWT_SECRET: changeme_generate_a_random_64_char_hex_string
+      JWT_SECRET: 69a74d6598edc99803d0fc648d68c383acb94c9c1e68d3e2f9e2def6ae54b58a
       # 凭证加密密钥: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-      CREDENTIALS_KEY: changeme_generate_with_fernet_generate_key
-      # 管理员密码 Argon2 哈希: python -c "from pwdlib import PasswordHash; print(PasswordHash.recommended().hash('your-password'))"
-      ADMIN_PASSWORD_HASH: changeme_argon2_hash
+      CREDENTIALS_KEY: zijhcV4hiZFML8CgiQGo7VjuFPutHcrch5QhYLCqX7s=
+      # 管理员密码 (明文)
+      ADMIN_PASSWORD: admin
 
       # ═══════════════════════════════════════════════════════════
       # 路径配置（通常不需修改）

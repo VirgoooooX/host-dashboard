@@ -103,9 +103,9 @@
                   <div class="form-help">{{ t('settings.security.help.credentialsKey') }}</div>
                 </el-form-item>
 
-                <el-form-item :label="t('settings.security.passwordHash')">
-                  <el-input v-model="readonlyForm.ADMIN_PASSWORD_HASH" disabled show-password />
-                  <div class="form-help">{{ t('settings.security.help.passwordHash') }}</div>
+                <el-form-item :label="t('settings.security.adminPassword')">
+                  <el-input v-model="readonlyForm.ADMIN_PASSWORD" disabled show-password />
+                  <div class="form-help">{{ t('settings.security.help.adminPassword') }}</div>
                 </el-form-item>
               </div>
             </el-form>
@@ -402,7 +402,7 @@ const paramsRules = reactive<FormRules>({
 const readonlyForm = reactive({
   JWT_SECRET: "",
   CREDENTIALS_KEY: "",
-  ADMIN_PASSWORD_HASH: "",
+  ADMIN_PASSWORD: "",
 });
 
 // Load all configuration lists

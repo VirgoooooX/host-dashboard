@@ -128,9 +128,9 @@ async def get_settings_list():
             "description": "密码加密 Fernet Key（只读，通过环境变量修改，需重启）",
         },
         {
-            "key": "ADMIN_PASSWORD_HASH",
+            "key": "ADMIN_PASSWORD",
             "type": "password",
-            "description": "管理员密码哈希值（只读，通过环境变量修改，需重启）",
+            "description": "管理员密码明文（只读，通过环境变量修改，需重启）",
         },
     ]
 

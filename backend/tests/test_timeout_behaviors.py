@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # Ensure test env vars are set before importing app modules
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret")
 os.environ.setdefault("CREDENTIALS_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
-os.environ.setdefault("ADMIN_PASSWORD_HASH", "test-password-hash")
+os.environ.setdefault("ADMIN_PASSWORD", "test-password")
 
 from app.models import HostConfig
 from app.services.snapshot import HostSnapshot, SnapshotManager

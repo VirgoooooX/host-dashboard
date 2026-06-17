@@ -44,7 +44,7 @@ async def login(
             detail="Invalid username or password",
         )
 
-    if not verify_password(req.password, settings.ADMIN_PASSWORD_HASH):
+    if not verify_password(req.password, settings.ADMIN_PASSWORD):
         rate_limiter.record_failure(ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
