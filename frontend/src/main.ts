@@ -13,6 +13,7 @@ import type { Locale } from "./i18n";
 import "./styles/dashboard.css";
 import "./styles/themes.css";
 import "./styles/ui.css";
+import "./styles/confirm-dialog.css";
 
 const app = createApp(App);
 

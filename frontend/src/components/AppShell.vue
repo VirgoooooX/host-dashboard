@@ -5,10 +5,7 @@
         <div class="ops-brand-mark">
           <AppLogo />
         </div>
-        <div>
-          <div class="ops-brand-title">{{ t('brand.name') }}</div>
-          <div class="ops-brand-subtitle">{{ t('brand.subtitle') }}</div>
-        </div>
+        <div class="ops-brand-title">{{ t('brand.name') }}</div>
       </div>
 
       <nav class="ops-nav" :aria-label="t('nav.hostsSection')">
@@ -221,7 +218,6 @@ function isActive(id: string, path: string) {
   if (path === "/") return route.name === "dashboard";
   return route.path.startsWith(path);
 }
-
 function logout() {
   auth.logout();
   router.push("/login");
@@ -244,7 +240,7 @@ function logout() {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 18px 14px;
+  padding: 12px;
   border-right: 1px solid var(--border-subtle);
   background: var(--sidebar-bg), var(--surface-raised);
 }
@@ -254,24 +250,25 @@ function logout() {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  min-height: 88px;
-  padding: 8px 8px 10px;
+  padding: 0 8px 15px;
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
 }
 
 .ops-brand-mark {
-  width: 66px;
-  height: 66px;
-  flex: 0 0 66px;
+  width: 76px;
+  height: 76px;
+  flex: 0 0 76px;
   display: grid;
   place-items: center;
+  margin: 0;
 }
 
 .ops-brand-title {
-  font-size: 25px;
-  line-height: 0.98;
+  font-size: 30px;
+  line-height: 1;
   font-weight: 800;
+  margin: 0;
 }
 
 .ops-section-label,
@@ -279,16 +276,6 @@ function logout() {
   color: var(--text-muted);
   font-size: 11px;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.ops-brand-subtitle {
-  margin-top: 5px;
-  color: var(--text-muted);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.095em;
-  line-height: 1.15;
   text-transform: uppercase;
 }
 
@@ -514,8 +501,7 @@ function logout() {
   }
 
   .ops-brand {
-    min-height: 74px;
-    padding: 7px 8px 9px;
+    padding: 4px 8px;
   }
 
   .ops-nav,

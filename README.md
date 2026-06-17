@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚢 Fleetge - Docker Fleet Console
+# <img src="frontend/public/app-logo.svg" width="40" height="40" alt="Fleetge" style="vertical-align: middle; margin-right: 4px;" /> Fleetge - Docker Fleet Console
 
 **A lightweight, real-time multi-host Docker fleet and Compose Stack management console.**
 
@@ -16,7 +16,7 @@
 
 Fleetge 是一个专为多主机环境设计的轻量级 Docker 集群与 Compose 容器编排控制台。
 
-它通过聚合 `fleetge-agent`、`docker-socket-proxy` 或直接对接 `Dockge` 服务，将多个独立主机的容器运行状态、主机硬件指标（CPU、内存、磁盘、网络）及 Compose 编排生命周期整合在单一的现代化 Web 界面中。支持秒级实时性能曲线、日志流式输出，并且支持对所有敏感凭证进行高级加密，提供详细的操作审计日志。
+它通过在被控节点部署极简的 `fleetge-agent`，将多个独立主机的容器运行状态、主机硬件指标（CPU、内存、磁盘、网络）及 Compose 编排生命周期整合在单一的现代化 Web 界面中。支持秒级实时性能曲线、日志流式输出，并且支持对所有敏感凭证进行高级加密，提供详细的操作审计日志。
 
 ### ✨ 核心特性
 
@@ -24,9 +24,7 @@ Fleetge 是一个专为多主机环境设计的轻量级 Docker 集群与 Compos
 - **📦 Compose Stack 生命周期管理**：统一节点环境 Stack 列表，支持一键启动、停止、重启、更新与删除。提供容器的 SSE 实时终端输出，操作无缝流转。
 - **➕ 可视化 Compose 编排编辑器**：提供直观易用的全新 Compose Stack 编写界面，支持语法高亮，轻松在线编排和部署容器。
 - **🛡️ 凭证加固与操作审计**：所有连接凭证均采用 Fernet 高强度加密落库；管理员采用 Argon2 密码散列验证；所有关键写操作（清理、Stack 变更、系统配置）均记录在审计日志中，确保轨迹可追溯。
-- **💡 灵活的接入模式**：
-  - **Agent 模式（推荐）**：在被控节点部署极简的 `fleetge-agent`，即可同时获得监控与 Compose 编排能力。
-  - **组件组合模式**：支持独立对接已有的 Dockge、docker-socket-proxy 及监控组件。
+- **💡 极简接入**：在被控节点部署极简的 `fleetge-agent`，即可同时获得监控与 Compose 编排能力。
 
 ---
 
@@ -181,7 +179,7 @@ docker compose up -d
 
 Fleetge is a lightweight, real-time Docker fleet and Compose Stack management console designed for multi-host server environments.
 
-By aggregating data from `fleetge-agent`, `docker-socket-proxy`, or existing `Dockge` instances, Fleetge provides a unified, production-ready interface to inspect container statuses, monitor hardware performance (CPU, Memory, Disk, Network) with 1-second interval charts, deploy Compose stacks, and review secure audit logs.
+By aggregating data from `fleetge-agent`, Fleetge provides a unified, production-ready interface to inspect container statuses, monitor hardware performance (CPU, Memory, Disk, Network) with 1-second interval charts, deploy Compose stacks, and review secure audit logs.
 
 ### ✨ Core Features
 
@@ -190,8 +188,7 @@ By aggregating data from `fleetge-agent`, `docker-socket-proxy`, or existing `Do
 - **➕ Built-in Compose Editor**: Write, edit, and orchestrate Compose files directly inside a syntax-highlighted editor.
 - **🛡️ Secure Access & Auditing**: Enterprise-grade Fernet encryption for remote tokens and passwords; secure Argon2 hashing for administrator logins; comprehensive audit logging for all critical state actions.
 - **💡 Flexible Agent Options**:
-  - **Agent Mode (Recommended)**: Run a tiny helper agent (`fleetge-agent`) on remote hosts to fetch host-level metrics and execute Compose commands.
-  - **Modular Mode**: Connect directly to existing instances of Dockge, docker-socket-proxy, and custom Prometheus-compatible metrics exporters.
+  - **Agent Mode**: Run a tiny helper agent (`fleetge-agent`) on remote hosts to fetch host-level metrics and execute Compose commands.
 
 ---
 

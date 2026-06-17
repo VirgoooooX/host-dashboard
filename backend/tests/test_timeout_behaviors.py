@@ -20,8 +20,7 @@ class SnapshotManagerTimeoutTests(unittest.IsolatedAsyncioTestCase):
             host_id=self.host_id,
             display_name="Test Host",
             enabled=True,
-            dockge_url="http://localhost:5001",
-            docker_proxy_url="http://localhost:2375"
+            agent_url="http://localhost:8080",
         )
         self.snap = HostSnapshot()
         self.snap.host_config = self.config
@@ -83,8 +82,8 @@ class SnapshotManagerTimeoutTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_no_stats_task_accumulation(self):
         # Mock dependencies for _refresh_host_docker_locked
-        self.manager._proxy_clients[self.host_id] = MagicMock()
-        proxy = self.manager._proxy_clients[self.host_id]
+        self.manager._agent_clients[self.host_id] = MagicMock()
+        proxy = self.manager._agent_clients[self.host_id]
         proxy.version = AsyncMock(return_value={"Version": "1.0"})
         proxy.info = AsyncMock(return_value={"OSType": "linux"})
         proxy.disk_usage = AsyncMock(return_value={})

@@ -10,6 +10,7 @@ export interface I18nSchema {
   "nav.audit": string;
   "nav.hosts": string;
   "nav.hostsSection": string;
+  "nav.settings": string;
   "shell.kicker": string;
   "shell.onlineCount": string;
   "shell.updateCount": string;
@@ -235,7 +236,7 @@ export interface I18nSchema {
   "workspace.repoDigests": string;
   "workspace.labels": string;
   "workspace.loadingCompose": string;
-  "workspace.noComposeFromDockge": string;
+  "workspace.noComposeFromAgent": string;
   "workspace.composeLoadFailed": string;
   "workspace.yes": string;
   "workspace.no": string;
@@ -244,7 +245,7 @@ export interface I18nSchema {
   // ── Compose Drawer ─────────────────────────────────────────
   "compose.kicker": string;
   "compose.stackNamePlaceholder": string;
-  "compose.managedByDockge": string;
+  "compose.managedByStackService": string;
   "compose.close": string;
   "compose.saveDraft": string;
   "compose.saveAndDeploy": string;

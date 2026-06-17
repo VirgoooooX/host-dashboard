@@ -266,16 +266,6 @@ class HostCreateRequest(BaseModel):
     # Agent connection (primary)
     agent_url: Optional[str] = None
     agent_token: Optional[str] = None
-    # Legacy connections (optional, for non-Agent hosts)
-    dockge_url: Optional[str] = None
-    dockge_username: Optional[str] = None
-    dockge_password: Optional[str] = None
-    docker_proxy_url: Optional[str] = None
-    docker_proxy_username: Optional[str] = None
-    docker_proxy_password: Optional[str] = None
-    metrics_url: Optional[str] = None
-    metrics_username: Optional[str] = None
-    metrics_password: Optional[str] = None
 
 
 class HostUpdateRequest(BaseModel):
@@ -284,15 +274,6 @@ class HostUpdateRequest(BaseModel):
     sort_order: int = 0
     agent_url: Optional[str] = None
     agent_token: Optional[str] = None  # None = keep existing, "" = clear
-    dockge_url: Optional[str] = None
-    dockge_username: Optional[str] = None
-    dockge_password: Optional[str] = None  # None = keep, "" = clear
-    docker_proxy_url: Optional[str] = None
-    docker_proxy_username: Optional[str] = None
-    docker_proxy_password: Optional[str] = None
-    metrics_url: Optional[str] = None
-    metrics_username: Optional[str] = None
-    metrics_password: Optional[str] = None
 
 
 class HostConfigResponse(BaseModel):
@@ -303,13 +284,6 @@ class HostConfigResponse(BaseModel):
     sort_order: int
     agent_url: Optional[str] = None
     has_agent_token: bool = False     # masked: only show whether token exists
-    dockge_url: Optional[str] = None
-    dockge_username: Optional[str] = None
-    has_dockge_password: bool = False
-    docker_proxy_url: Optional[str] = None
-    has_docker_proxy_auth: bool = False
-    metrics_url: Optional[str] = None
-    has_metrics_auth: bool = False
     stack_icons: Optional[dict[str, str]] = None  # parsed JSON mapping
 
 

@@ -33,10 +33,6 @@ from app.schemas import (
     StackService,
     UpdateCheckResult,
 )
-from app.services.crypto import decrypt_credentials
-from app.services.dockge_client import dockge_pool
-from app.services.docker_proxy import DockerProxyClient
-from app.services.metrics_client import MetricsClient
 from app.services.agent_client import AgentClient
 from app.services.update_check import run_update_check
 
@@ -95,15 +91,12 @@ class SnapshotManager:
         self._tasks: list[asyncio.Task] = []
 
         # Clients — lazily created
-        self._proxy_clients: dict[str, DockerProxyClient] = {}
-        self._metrics_clients: dict[str, MetricsClient] = {}
         self._agent_clients: dict[str, AgentClient] = {}
         self._host_refresh_locks: dict[str, asyncio.Lock] = {}
         self._metrics_refresh_lock = asyncio.Lock()
         self._update_check_lock = asyncio.Lock()
         self._stats_tasks: dict[str, asyncio.Task] = {}
         self._realtime_refresh_tasks: dict[str, asyncio.Task] = {}  # coalesce WebSocket-triggered refreshes
-        # Dockge connections are managed by dockge_pool
 
         # Active connection tracking for polling optimization
         self._active_connections = 0
@@ -189,11 +182,6 @@ class SnapshotManager:
         )
         self._stats_tasks.clear()
         self._realtime_refresh_tasks.clear()
-        await dockge_pool.disconnect_all()
-        for c in self._proxy_clients.values():
-            await c.close()
-        self._proxy_clients.clear()
-        self._metrics_clients.clear()
         for c in self._agent_clients.values():
             await c.close()
         self._agent_clients.clear()
@@ -233,11 +221,8 @@ class SnapshotManager:
             for hid in list(self._snapshots.keys()):
                 if hid not in configured_ids:
                     del self._snapshots[hid]
-                    self._proxy_clients.pop(hid, None)
-                    self._metrics_clients.pop(hid, None)
                     self._agent_clients.pop(hid, None)
                     self._host_refresh_locks.pop(hid, None)
-                    await dockge_pool.remove(hid)
             for h in hosts:
                 if h.host_id not in self._snapshots:
                     snap = HostSnapshot()
@@ -366,11 +351,8 @@ class SnapshotManager:
             for hid in list(self._snapshots.keys()):
                 if hid not in configured_ids:
                     del self._snapshots[hid]
-                    self._proxy_clients.pop(hid, None)
-                    self._metrics_clients.pop(hid, None)
                     self._agent_clients.pop(hid, None)
                     self._host_refresh_locks.pop(hid, None)
-                    await dockge_pool.remove(hid)
 
             # Add/update snapshots
             for h in hosts:
@@ -425,17 +407,13 @@ class SnapshotManager:
                 cfg = snap.host_config
                 if self._should_skip(cfg.host_id):
                     return
+                if not cfg.agent_url:
+                    return
                 try:
-                    if cfg.agent_url:
-                        if cfg.host_id not in self._agent_clients:
-                            self._agent_clients[cfg.host_id] = AgentClient(cfg)
-                        agent = self._agent_clients[cfg.host_id]
-                        metrics = await agent.fetch_metrics()
-                    else:
-                        if cfg.host_id not in self._metrics_clients:
-                            self._metrics_clients[cfg.host_id] = MetricsClient(cfg)
-                        client = self._metrics_clients[cfg.host_id]
-                        metrics = await client.fetch()
+                    if cfg.host_id not in self._agent_clients:
+                        self._agent_clients[cfg.host_id] = AgentClient(cfg)
+                    agent = self._agent_clients[cfg.host_id]
+                    metrics = await agent.fetch_metrics()
                     snap.metrics = metrics
                     snap.metrics_updated = time.monotonic()
                     self._record_success(cfg.host_id)
@@ -497,19 +475,18 @@ class SnapshotManager:
     async def _refresh_host_docker_locked(
         self, host_id: str, trigger_initial_update_check: bool = True
     ) -> None:
-        """Poll docker-socket-proxy and Dockge for a specific host immediately."""
+        """Poll agent for a specific host immediately."""
         snap = self._snapshots.get(host_id)
         if not snap or not snap.host_config:
             return
         cfg = snap.host_config
-        if cfg.agent_url:
-            if cfg.host_id not in self._agent_clients:
-                self._agent_clients[cfg.host_id] = AgentClient(cfg)
-            proxy = self._agent_clients[cfg.host_id]
-        else:
-            if cfg.host_id not in self._proxy_clients:
-                self._proxy_clients[cfg.host_id] = DockerProxyClient(cfg)
-            proxy = self._proxy_clients[cfg.host_id]
+        if not cfg.agent_url:
+            logger.warning("Host %s has no agent_url configured", host_id)
+            return
+
+        if cfg.host_id not in self._agent_clients:
+            self._agent_clients[cfg.host_id] = AgentClient(cfg)
+        proxy = self._agent_clients[cfg.host_id]
 
         try:
             # Version / Info
@@ -906,18 +883,15 @@ class SnapshotManager:
             logger.error("Failed to apply real-time stacks update for %s: %s", host_id, exc)
 
     async def _refresh_stacks(self, snap: HostSnapshot, cfg: HostConfig) -> None:
-        """Fetch and merge Dockge stacks with container states."""
+        """Fetch and merge Agent stacks with container states."""
         try:
-            if cfg.agent_url:
-                if cfg.host_id not in self._agent_clients:
-                    self._agent_clients[cfg.host_id] = AgentClient(cfg)
-                conn = self._agent_clients[cfg.host_id]
-                raw_stacks = await conn.list_stacks()
-            else:
-                # Decrypt Dockge password
-                creds = decrypt_credentials(cfg.dockge_password_encrypted)
-                conn = await dockge_pool.get_or_create(cfg, creds["password"])
-                raw_stacks = await conn.list_stacks()
+            if not cfg.agent_url:
+                raise ValueError("No agent_url configured")
+
+            if cfg.host_id not in self._agent_clients:
+                self._agent_clients[cfg.host_id] = AgentClient(cfg)
+            conn = self._agent_clients[cfg.host_id]
+            raw_stacks = await conn.list_stacks()
 
             stacks = self.parse_dockge_stacks(raw_stacks)
             stacks = self._apply_stack_icons(stacks, cfg)
@@ -967,7 +941,7 @@ class SnapshotManager:
         return self._apply_stack_icons(merged, snap.host_config)
 
     async def _refresh_container_stats(
-        self, snap: HostSnapshot, proxy: DockerProxyClient, cfg: HostConfig
+        self, snap: HostSnapshot, proxy: AgentClient, cfg: HostConfig
     ) -> None:
         """Refresh running-container stats concurrently.
 

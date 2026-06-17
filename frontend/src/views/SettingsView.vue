@@ -126,21 +126,7 @@
               <el-table-column :label="t('settings.hosts.col.sort')" prop="sort_order" width="70" align="center" />
               <el-table-column :label="t('settings.hosts.col.id')" prop="host_id" width="140" />
               <el-table-column :label="t('settings.hosts.col.name')" prop="display_name" width="160" />
-              <el-table-column :label="t('settings.hosts.col.mode')" width="160">
-                <template #default="{ row }">
-                  <el-tag v-if="row.agent_url" type="success" size="small">{{ t('settings.hosts.mode.agent') }}</el-tag>
-                  <el-tag v-else type="info" size="small">{{ t('settings.hosts.mode.legacy') }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column :label="t('settings.hosts.col.url')" min-width="200">
-                <template #default="{ row }">
-                  <span class="url-text" v-if="row.agent_url">{{ row.agent_url }}</span>
-                  <span class="url-text text-muted" v-else>
-                    Dockge: {{ row.dockge_url || '-' }}<br />
-                    Proxy: {{ row.docker_proxy_url || '-' }}
-                  </span>
-                </template>
-              </el-table-column>
+              <el-table-column :label="t('settings.hosts.col.url')" min-width="200" prop="agent_url" />
               <el-table-column :label="t('settings.hosts.col.status')" prop="enabled" width="90" align="center">
                 <template #default="{ row }">
                   <el-switch v-slot:default v-model="row.enabled" @change="toggleHostEnabled(row)" :loading="store.saving" />
@@ -234,15 +220,7 @@
 
         <el-divider>{{ t('settings.hosts.form.connection') }}</el-divider>
 
-        <el-form-item :label="t('settings.hosts.form.mode')">
-          <el-radio-group v-model="hostForm.mode" class="mode-radios">
-            <el-radio-button label="agent">{{ t('settings.hosts.mode.agentTag') }}</el-radio-button>
-            <el-radio-button label="legacy">{{ t('settings.hosts.mode.legacyTag') }}</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-
-        <!-- Mode Agent Form -->
-        <div v-if="hostForm.mode === 'agent'" class="mode-section">
+        <div class="mode-section">
           <el-form-item :label="t('settings.hosts.form.agentUrl')" prop="agent_url">
             <el-input v-model="hostForm.agent_url" placeholder="http://192.168.1.100:8080" />
             <div class="form-help">{{ t('settings.hosts.form.agentUrlHelp') }}</div>
@@ -255,63 +233,6 @@
               :placeholder="hostFormMode === 'edit' ? t('settings.hosts.form.unchangedPlaceholder') : t('settings.hosts.form.agentTokenPlaceholder')"
             />
           </el-form-item>
-        </div>
-
-        <!-- Mode Legacy Form -->
-        <div v-else class="mode-section legacy-grid">
-          <div class="legacy-card">
-            <div class="legacy-card-title">{{ t('settings.hosts.form.dockgeTitle') }}</div>
-            <el-form-item :label="t('settings.hosts.form.dockgeUrl')" prop="dockge_url">
-              <el-input v-model="hostForm.dockge_url" placeholder="http://192.168.1.100:5001" />
-            </el-form-item>
-            <el-form-item :label="t('settings.hosts.form.dockgeUser')" prop="dockge_username">
-              <el-input v-model="hostForm.dockge_username" placeholder="admin" />
-            </el-form-item>
-            <el-form-item :label="t('settings.hosts.form.dockgePass')" prop="dockge_password">
-              <el-input
-                v-model="hostForm.dockge_password"
-                type="password"
-                show-password
-                :placeholder="hostFormMode === 'edit' ? t('settings.hosts.form.unchangedPlaceholder') : t('settings.hosts.form.unchangedPlaceholder')"
-              />
-            </el-form-item>
-          </div>
-
-          <div class="legacy-card">
-            <div class="legacy-card-title">{{ t('settings.hosts.form.proxyTitle') }}</div>
-            <el-form-item :label="t('settings.hosts.form.proxyUrl')" prop="docker_proxy_url">
-              <el-input v-model="hostForm.docker_proxy_url" placeholder="http://192.168.1.100:2375" />
-            </el-form-item>
-            <el-form-item :label="t('settings.hosts.form.proxyUser')" prop="docker_proxy_username">
-              <el-input v-model="hostForm.docker_proxy_username" placeholder="username" />
-            </el-form-item>
-            <el-form-item :label="t('settings.hosts.form.proxyPass')" prop="docker_proxy_password">
-              <el-input
-                v-model="hostForm.docker_proxy_password"
-                type="password"
-                show-password
-                :placeholder="hostFormMode === 'edit' ? t('settings.hosts.form.unchangedPlaceholder') : t('settings.hosts.form.unchangedPlaceholder')"
-              />
-            </el-form-item>
-          </div>
-
-          <div class="legacy-card full-width">
-            <div class="legacy-card-title">{{ t('settings.hosts.form.metricsTitle') }}</div>
-            <el-form-item :label="t('settings.hosts.form.metricsUrl')" prop="metrics_url">
-              <el-input v-model="hostForm.metrics_url" placeholder="http://192.168.1.100:9100" />
-            </el-form-item>
-            <el-form-item :label="t('settings.hosts.form.metricsUser')" prop="metrics_username">
-              <el-input v-model="hostForm.metrics_username" placeholder="username" />
-            </el-form-item>
-            <el-form-item :label="t('settings.hosts.form.metricsPass')" prop="metrics_password">
-              <el-input
-                v-model="hostForm.metrics_password"
-                type="password"
-                show-password
-                :placeholder="hostFormMode === 'edit' ? t('settings.hosts.form.unchangedPlaceholder') : t('settings.hosts.form.unchangedPlaceholder')"
-              />
-            </el-form-item>
-          </div>
         </div>
 
         <div class="dialog-actions-row">
@@ -433,6 +354,7 @@ import { ref, reactive, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
+import { useConfirm } from "@/composables/useConfirm";
 import {
   ArrowLeft,
   Plus,
@@ -446,6 +368,7 @@ import { useSettingsStore, type SettingItem, type HostConfigResponse, type Stack
 
 const { t } = useI18n();
 const store = useSettingsStore();
+const { confirm, alert: confirmAlert } = useConfirm();
 const activeTab = ref("params");
 
 // Params Form
@@ -530,24 +453,10 @@ const hostForm = reactive({
   display_name: "",
   enabled: true,
   sort_order: 0,
-  mode: "agent", // "agent" | "legacy"
   
   // Agent Mode
   agent_url: "",
   agent_token: "",
-  
-  // Legacy Mode
-  dockge_url: "",
-  dockge_username: "",
-  dockge_password: "",
-  
-  docker_proxy_url: "",
-  docker_proxy_username: "",
-  docker_proxy_password: "",
-  
-  metrics_url: "",
-  metrics_username: "",
-  metrics_password: "",
 });
 
 const validateHostId = (_rule: any, value: string, callback: any) => {
@@ -575,9 +484,6 @@ const hostRules = reactive<FormRules>({
     { required: true, message: t("settings.hosts.form.required.agentUrl"), trigger: "blur" },
     { validator: validateHttpUrl, trigger: "blur" }
   ],
-  dockge_url: [{ validator: validateHttpUrl, trigger: "blur" }],
-  docker_proxy_url: [{ validator: validateHttpUrl, trigger: "blur" }],
-  metrics_url: [{ validator: validateHttpUrl, trigger: "blur" }],
 });
 
 function openCreateHostDialog() {
@@ -586,18 +492,8 @@ function openCreateHostDialog() {
   hostForm.display_name = "";
   hostForm.enabled = true;
   hostForm.sort_order = store.hosts.length > 0 ? Math.max(...store.hosts.map(h => h.sort_order)) + 10 : 10;
-  hostForm.mode = "agent";
   hostForm.agent_url = "";
   hostForm.agent_token = "";
-  hostForm.dockge_url = "";
-  hostForm.dockge_username = "";
-  hostForm.dockge_password = "";
-  hostForm.docker_proxy_url = "";
-  hostForm.docker_proxy_username = "";
-  hostForm.docker_proxy_password = "";
-  hostForm.metrics_url = "";
-  hostForm.metrics_username = "";
-  hostForm.metrics_password = "";
   
   hostDialogVisible.value = true;
 }
@@ -608,22 +504,9 @@ function openEditHostDialog(row: HostConfigResponse) {
   hostForm.display_name = row.display_name;
   hostForm.enabled = row.enabled;
   hostForm.sort_order = row.sort_order;
-  hostForm.mode = row.agent_url ? "agent" : "legacy";
   
   hostForm.agent_url = row.agent_url || "";
   hostForm.agent_token = ""; // Password fields are masked
-  
-  hostForm.dockge_url = row.dockge_url || "";
-  hostForm.dockge_username = row.dockge_username || "";
-  hostForm.dockge_password = "";
-  
-  hostForm.docker_proxy_url = row.docker_proxy_url || "";
-  hostForm.docker_proxy_username = row.dockge_username || ""; // Shared display logic in basic auths
-  hostForm.docker_proxy_password = "";
-  
-  hostForm.metrics_url = row.metrics_url || "";
-  hostForm.metrics_username = "";
-  hostForm.metrics_password = "";
   
   hostDialogVisible.value = true;
 }
@@ -637,46 +520,16 @@ function closeHostDialog() {
 
 // Transform form values to request payload shapes
 function prepareHostPayload() {
-  const isAgent = hostForm.mode === "agent";
   const payload: any = {
     display_name: hostForm.display_name,
     enabled: hostForm.enabled,
     sort_order: hostForm.sort_order,
+    agent_url: hostForm.agent_url,
+    agent_token: hostForm.agent_token || (hostFormMode.value === "edit" ? null : ""),
   };
 
   if (hostFormMode.value === "create") {
     payload.host_id = hostForm.host_id;
-  }
-
-  if (isAgent) {
-    payload.agent_url = hostForm.agent_url;
-    payload.agent_token = hostForm.agent_token || (hostFormMode.value === "edit" ? null : "");
-    
-    // Clear legacy fields
-    payload.dockge_url = "";
-    payload.dockge_username = "";
-    payload.dockge_password = "";
-    payload.docker_proxy_url = "";
-    payload.docker_proxy_username = "";
-    payload.docker_proxy_password = "";
-    payload.metrics_url = "";
-    payload.metrics_username = "";
-    payload.metrics_password = "";
-  } else {
-    payload.agent_url = null;
-    payload.agent_token = null;
-    
-    payload.dockge_url = hostForm.dockge_url;
-    payload.dockge_username = hostForm.dockge_username;
-    payload.dockge_password = hostForm.dockge_password || (hostFormMode.value === "edit" ? null : "");
-    
-    payload.docker_proxy_url = hostForm.docker_proxy_url;
-    payload.docker_proxy_username = hostForm.docker_proxy_username;
-    payload.docker_proxy_password = hostForm.docker_proxy_password || (hostFormMode.value === "edit" ? null : "");
-    
-    payload.metrics_url = hostForm.metrics_url;
-    payload.metrics_username = hostForm.metrics_username;
-    payload.metrics_password = hostForm.metrics_password || (hostFormMode.value === "edit" ? null : "");
   }
   
   return payload;
@@ -713,15 +566,6 @@ async function toggleHostEnabled(row: HostConfigResponse) {
       sort_order: row.sort_order,
       agent_url: row.agent_url,
       agent_token: null, // Keep secrets unchanged
-      dockge_url: row.dockge_url,
-      dockge_username: row.dockge_username,
-      dockge_password: null,
-      docker_proxy_url: row.docker_proxy_url,
-      docker_proxy_username: row.dockge_username,
-      docker_proxy_password: null,
-      metrics_url: row.metrics_url,
-      metrics_username: "",
-      metrics_password: null,
     };
     await store.updateHost(row.host_id, payload);
     ElMessage.success(
@@ -735,13 +579,14 @@ async function toggleHostEnabled(row: HostConfigResponse) {
 
 async function confirmDeleteHost(row: HostConfigResponse) {
   try {
-    await ElMessageBox.confirm(
+    await confirm(
       t("settings.hosts.delete.confirm", { name: row.display_name }),
       t("settings.hosts.delete.title"),
       {
+        tone: "danger",
         confirmButtonText: t("stack.action.delete"),
         cancelButtonText: t("stack.confirm.cancel"),
-        type: "warning",
+        confirmButtonClass: "pg-confirm-btn",
       }
     );
     await store.deleteHost(row.host_id);
@@ -759,21 +604,21 @@ async function testHostConnection(row: HostConfigResponse) {
     duration: 0,
     type: "info",
   });
-  
+
   const res = await store.testConnection(row.host_id);
   loadingMsg.close();
-  
+
   if (res.success) {
-    ElMessageBox.alert(
+    confirmAlert(
       t("settings.hosts.test.successDetail", { time: res.response_time_ms, msg: res.message }),
       t("settings.hosts.test.successTitle"),
-      { type: "success", confirmButtonText: t("stack.confirm.ok") }
+      { tone: "success", confirmButtonText: t("stack.confirm.ok") }
     );
   } else {
-    ElMessageBox.alert(
+    confirmAlert(
       t("settings.hosts.test.failedDetail", { msg: res.message }),
       t("settings.hosts.test.failedTitle"),
-      { type: "error", confirmButtonText: t("stack.confirm.ok") }
+      { tone: "error", confirmButtonText: t("stack.confirm.ok") }
     );
   }
 }
@@ -781,7 +626,7 @@ async function testHostConnection(row: HostConfigResponse) {
 async function testFormConnection() {
   if (!hostFormRef.value) return;
   let hasErrors = false;
-  hostFormRef.value.validateField(["agent_url", "dockge_url", "docker_proxy_url", "metrics_url"], (valid) => {
+  hostFormRef.value.validateField(["agent_url"], (valid) => {
     if (!valid) hasErrors = true;
   });
   if (hasErrors) return;

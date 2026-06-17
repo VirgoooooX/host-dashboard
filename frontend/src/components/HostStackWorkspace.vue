@@ -31,17 +31,6 @@
         </el-tooltip>
       </div>
 
-      <StackOperationDock
-        v-if="operationPanelVisible && operationPanelStack === '__prune__'"
-        class="sidebar-prune-dock"
-        stack-name="Docker System"
-        :action="operationPanelAction"
-        :lines="terminalOutputs['__prune__'] || []"
-        :status="operationPanelStatus"
-        :message="operationPanelMessage"
-        @close="closeOperationDock"
-      />
-
       <div class="sidebar-search">
         <el-icon><Search /></el-icon>
         <input v-model="stackSearch" type="search" :placeholder="t('workspace.searchPlaceholder')" />
@@ -113,15 +102,15 @@
           <article
             v-for="stack in filteredStacks"
             :key="stack.name"
-            class="dockge-stack-card"
+            class="stack-card"
             :class="{ 'is-stopped': stack.status === 'stopped' || stack.status === 'inactive' || stack.status === 'exited' }"
             @click="selectStack(stack.name)"
           >
-            <div class="dockge-stack-header">
+            <div class="stack-header">
               <div class="stack-title-row">
                 <img v-if="stack.icon_url" :src="stack.icon_url" class="stack-icon-img" @error="onIconError" />
                 <el-icon v-else class="stack-title-icon"><FolderOpened /></el-icon>
-                <span class="dockge-stack-name">{{ stack.name }}</span>
+                <span class="stack-name">{{ stack.name }}</span>
                 <span class="dot-state" :class="`dot-${stackStatusType(stack.status)}`" />
                 <span class="stack-state-text">{{ statusLabel(stack.status) }}</span>
                 <UpdateBadge v-if="stackUpdateStatus(stack)" :status="stackUpdateStatus(stack)!" />
@@ -689,7 +678,7 @@
                 show-icon
                 :closable="false"
               />
-              <pre v-else><code>{{ composeYaml || t('workspace.noComposeFromDockge') }}</code></pre>
+              <pre v-else><code>{{ composeYaml || t('workspace.noComposeFromAgent') }}</code></pre>
             </div>
           </aside>
         </div>
@@ -705,6 +694,27 @@
       @close="composeDrawerVisible = false"
       @saved="onComposeSaved"
     />
+
+    <!-- Docker Clean Dialog -->
+    <el-dialog
+      v-model="pruneDialogVisible"
+      :title="t('workspace.pruneDocker')"
+      width="700px"
+      :close-on-click-modal="false"
+      destroy-on-close
+      append-to-body
+      class="prune-dialog"
+    >
+      <StackOperationDock
+        class="prune-terminal"
+        stack-name="Docker System"
+        :action="operationPanelAction"
+        :lines="terminalOutputs['__prune__'] || []"
+        :status="operationPanelStatus"
+        :message="operationPanelMessage"
+        @close="closeOperationDock"
+      />
+    </el-dialog>
   </section>
 </template>
 
@@ -729,10 +739,11 @@ import {
   ArrowRight,
   Brush,
 } from "@element-plus/icons-vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage } from "element-plus";
 import { useI18n } from "vue-i18n";
 import { apiClient } from "@/api/client";
 import { streamSse } from "@/api/sse";
+import { useConfirm } from "@/composables/useConfirm";
 import StatusIcon from "./StatusIcon.vue";
 import StackActions from "./StackActions.vue";
 import type { OperationState, TerminalChunkEvent } from "./StackActions.vue";
@@ -846,6 +857,7 @@ const emit = defineEmits<{
 }>();
 
 const { t, locale } = useI18n();
+const { confirm } = useConfirm();
 
 const stackSearch = ref("");
 const selectedStackName = ref("");
@@ -869,6 +881,17 @@ const operationPanelStatus = ref<"running" | "success" | "error" | "idle">("idle
 const operationPanelMessage = ref("");
 const operationPanelAction = ref("");
 let operationAutoCloseTimer: ReturnType<typeof setTimeout> | null = null;
+
+const pruneDialogVisible = computed({
+  get() {
+    return operationPanelVisible.value && operationPanelStack.value === "__prune__";
+  },
+  set(val) {
+    if (!val) {
+      closeOperationDock();
+    }
+  }
+});
 
 const composeDrawerVisible = ref(false);
 const currentComposeStack = ref("");
@@ -1118,14 +1141,14 @@ function openNewCompose() {
 
 async function confirmPrune() {
   try {
-    await ElMessageBox.confirm(
+    await confirm(
       t("workspace.pruneMessage"),
       t("workspace.pruneConfirm"),
       {
+        tone: "danger",
         confirmButtonText: t("stack.delete.ok"),
         cancelButtonText: t("stack.confirm.cancel"),
-        type: "error",
-        confirmButtonClass: "el-button--danger",
+        confirmButtonClass: "pg-confirm-btn",
       }
     );
   } catch {
@@ -1447,8 +1470,18 @@ onUnmounted(() => {
   width: 34px;
 }
 
-.sidebar-prune-dock {
-  margin-bottom: 2px;
+.prune-dialog :deep(.el-dialog__header) {
+  display: none;
+}
+
+.prune-dialog :deep(.el-dialog__body) {
+  padding: 0;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.prune-terminal :deep(.terminal-surface) {
+  height: 380px;
 }
 
 .sidebar-search {
@@ -1655,7 +1688,7 @@ onUnmounted(() => {
 
 .workspace-headline,
 .detail-hero,
-.dockge-stack-header,
+.stack-header,
 .section-heading,
 .panel-header {
   display: flex;
@@ -1695,7 +1728,7 @@ onUnmounted(() => {
   margin-top: 14px;
 }
 
-.dockge-stack-card,
+.stack-card,
 .workspace-section,
 .detail-panel {
   border: 1px solid var(--border-subtle);
@@ -1703,35 +1736,35 @@ onUnmounted(() => {
   background: var(--surface-base);
 }
 
-.dockge-stack-card {
+.stack-card {
   padding: 16px;
   cursor: pointer;
 }
 
-.dockge-stack-card:hover {
+.stack-card:hover {
   border-color: var(--border-strong);
 }
 
-.dockge-stack-card.is-stopped {
+.stack-card.is-stopped {
   border-style: dashed !important;
   opacity: 0.75;
   background: var(--surface-panel-raised, rgba(15, 23, 42, 0.2)) !important;
 }
 
-.dockge-stack-card.is-stopped:hover {
+.stack-card.is-stopped:hover {
   opacity: 0.95;
 }
 
-.dockge-stack-card.is-stopped .stack-title-icon {
+.stack-card.is-stopped .stack-title-icon {
   color: var(--text-muted) !important;
 }
 
-.dockge-stack-card.is-stopped .stack-icon-img {
+.stack-card.is-stopped .stack-icon-img {
   filter: grayscale(100%);
   opacity: 0.55;
 }
 
-.dockge-stack-card.is-stopped .dockge-stack-name {
+.stack-card.is-stopped .stack-name {
   color: var(--text-secondary);
 }
 
@@ -1754,7 +1787,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.dockge-stack-name {
+.stack-name {
   overflow: hidden;
   color: var(--text-primary);
   font-size: 15px;
@@ -3027,13 +3060,13 @@ onUnmounted(() => {
 @media (max-width: 720px) {
   .workspace-main,
   .workspace-sidebar,
-  .dockge-stack-card,
+  .stack-card,
   .workspace-section,
   .detail-panel {
     padding: 12px;
   }
 
-  .dockge-stack-header,
+  .stack-header,
   .detail-hero,
   .workspace-headline {
     align-items: flex-start;

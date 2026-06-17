@@ -338,6 +338,7 @@ function formatRateParts(bytesPerSec: number | undefined): { amount: string; uni
   border-radius: inherit;
   background: var(--metric-color);
   box-shadow: 0 0 16px color-mix(in srgb, var(--metric-color), transparent 45%);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .telemetry-grid {

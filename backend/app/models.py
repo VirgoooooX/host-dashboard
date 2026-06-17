@@ -17,20 +17,7 @@ class HostConfig(SQLModel, table=True):
     sort_order: int = 0
 
     # Connection URLs
-    dockge_url: str = ""
-    dockge_username: str = ""
-    dockge_password_encrypted: str = ""
-
-    docker_proxy_url: str = ""
-    # Fernet-encrypted JSON: {"username": "...", "password": "..."}
-    docker_proxy_auth_encrypted: Optional[str] = None
-
-    metrics_url: str = ""
-    # Fernet-encrypted JSON: {"username": "...", "password": "..."}
-    # (Or Fernet-encrypted string directly for agent token)
-    metrics_auth_encrypted: Optional[str] = None
-
-    # Fleetge Agent fields (Optional for parallel co-existence)
+    # Fleetge Agent fields (primary)
     agent_url: Optional[str] = Field(default=None)
     agent_token_encrypted: Optional[str] = Field(default=None)
 

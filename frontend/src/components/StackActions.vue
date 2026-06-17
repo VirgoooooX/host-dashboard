@@ -120,7 +120,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage } from "element-plus";
 import { useI18n } from "vue-i18n";
 import {
   VideoPlay,
@@ -135,6 +135,7 @@ import {
 } from "@element-plus/icons-vue";
 import { streamSse } from "@/api/sse";
 import { apiClient } from "@/api/client";
+import { useConfirm, STACK_TONE_MAP } from "@/composables/useConfirm";
 
 export type OperationState = {
   action: string;
@@ -177,6 +178,7 @@ const emit = defineEmits<{
 const loading = ref<string | null>(null);
 const deleting = ref(false);
 const { t } = useI18n();
+const { confirm } = useConfirm();
 
 const riskKeys: Record<string, string> = {
   start: "stack.risk.start",
@@ -196,7 +198,7 @@ const actionTimeouts: Record<string, number> = {
 
 async function confirmAndRun(action: string, label: string) {
   try {
-    await ElMessageBox.confirm(
+    await confirm(
       t("stack.confirm.message", {
         action: label,
         name: props.stackName,
@@ -204,9 +206,10 @@ async function confirmAndRun(action: string, label: string) {
       }),
       t("stack.confirm.title", { action: label }),
       {
+        tone: STACK_TONE_MAP[action] || "info",
         confirmButtonText: t("stack.confirm.ok"),
         cancelButtonText: t("stack.confirm.cancel"),
-        type: "warning",
+        confirmButtonClass: "pg-confirm-btn",
       }
     );
   } catch {
@@ -319,14 +322,14 @@ async function confirmAndRun(action: string, label: string) {
 
 async function confirmAndDelete() {
   try {
-    await ElMessageBox.confirm(
+    await confirm(
       t("stack.delete.message", { name: props.stackName }),
       t("stack.delete.title"),
       {
+        tone: "danger",
         confirmButtonText: t("stack.delete.ok"),
         cancelButtonText: t("stack.confirm.cancel"),
-        type: "error",
-        confirmButtonClass: "el-button--danger",
+        confirmButtonClass: "pg-confirm-btn",
       }
     );
   } catch {

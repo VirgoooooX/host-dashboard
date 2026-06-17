@@ -20,13 +20,6 @@ export interface HostConfigResponse {
   sort_order: number;
   agent_url?: string;
   has_agent_token: boolean;
-  dockge_url?: string;
-  dockge_username?: string;
-  has_dockge_password: boolean;
-  docker_proxy_url?: string;
-  has_docker_proxy_auth: boolean;
-  metrics_url?: string;
-  has_metrics_auth: boolean;
   stack_icons?: Record<string, string>;
 }
 

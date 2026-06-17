@@ -40,29 +40,7 @@ def write_hosts_to_yaml() -> None:
                 "token": "[ENCRYPTED]" if h.agent_token_encrypted else ""
             }
 
-        # Legacy Dockge
-        if h.dockge_url:
-            host_entry["dockge"] = {
-                "url": h.dockge_url,
-                "username": h.dockge_username,
-                "password": "[ENCRYPTED]" if h.dockge_password_encrypted else ""
-            }
 
-        # Legacy docker-proxy
-        if h.docker_proxy_url:
-            host_entry["docker_proxy"] = {
-                "url": h.docker_proxy_url,
-                "username": "",
-                "password": "[ENCRYPTED]" if h.docker_proxy_auth_encrypted else ""
-            }
-
-        # Legacy metrics
-        if h.metrics_url:
-            host_entry["metrics"] = {
-                "url": h.metrics_url,
-                "username": "",
-                "password": "[ENCRYPTED]" if h.metrics_auth_encrypted else ""
-            }
 
         # Stack icons
         try:

@@ -17,75 +17,10 @@ os.environ.setdefault(
 
 from app.models import HostConfig, ImageUpdateCache
 from app.schemas import DockerDiskUsage, UpdateCheckResult
-from app.services.dockge_client import DockgeClientError, DockgeConnection
 from app.services.snapshot import HostSnapshot, SnapshotManager
 
 
-class FakeSocket:
-    def __init__(self, result):
-        self.result = result
 
-    async def call(self, *_args, **_kwargs):
-        return self.result
-
-
-class DockgeClientTests(unittest.IsolatedAsyncioTestCase):
-    async def test_agent_call_unwraps_error_first_success(self):
-        conn = DockgeConnection.__new__(DockgeConnection)
-        conn._connected = True
-        conn._sio = FakeSocket([None, {"ok": True, "value": 42}])
-        conn._endpoint = ""
-        conn._host_id = "test-host"
-
-        result = await conn._agent_call("getStack", "demo")
-
-        self.assertEqual(result, {"ok": True, "value": 42})
-
-    async def test_agent_call_keeps_bare_single_item_list(self):
-        conn = DockgeConnection.__new__(DockgeConnection)
-        conn._connected = True
-        conn._sio = FakeSocket([{"name": "svc"}])
-        conn._endpoint = ""
-        conn._host_id = "test-host"
-
-        result = await conn._agent_call("serviceStatusList", "demo")
-
-        self.assertEqual(result, [{"name": "svc"}])
-
-    async def test_run_with_terminal_concurrent_reject_sends_sentinel(self):
-        conn = DockgeConnection.__new__(DockgeConnection)
-        conn._host_id = "test-host"
-        conn._endpoint = ""
-        conn._terminal_monitors = {
-            "compose--demo": {"future": None, "queue": None, "buffer": []}
-        }
-        queue = asyncio.Queue()
-
-        with self.assertRaises(DockgeClientError):
-            await conn._run_with_terminal("demo", "updateStack", "demo", log_queue=queue)
-
-        self.assertIsNone(await queue.get())
-
-    async def test_save_stack_for_new_stack_sets_is_add(self):
-        conn = DockgeConnection.__new__(DockgeConnection)
-        calls = []
-
-        async def fake_agent_call(event, *args, **kwargs):
-            calls.append((event, args, kwargs))
-            return {"ok": True}
-
-        conn._agent_call = fake_agent_call
-
-        result = await conn.save_stack(
-            "new-stack",
-            "services:\n  app:\n    image: nginx:latest\n",
-            "",
-            is_add=True,
-        )
-
-        self.assertEqual(result, {"ok": True})
-        self.assertEqual(calls[0][0], "saveStack")
-        self.assertEqual(calls[0][1][3], True)
 
 
 class SnapshotManagerTests(unittest.TestCase):
@@ -113,8 +48,7 @@ class SnapshotManagerTests(unittest.TestCase):
             host_id="host-a",
             display_name="Host A",
             enabled=True,
-            dockge_url="http://localhost:5001",
-            docker_proxy_url="http://localhost:2375",
+            agent_url="http://localhost:8080",
         )
         snap.status = "online"
         snap.image_count = 7

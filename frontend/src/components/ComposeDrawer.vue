@@ -20,7 +20,7 @@
             clearable
           />
           <p>{{ composeFileName }}</p>
-          <p v-if="managed" class="compose-editor__managed">{{ t('compose.managedByDockge') }}</p>
+          <p v-if="managed" class="compose-editor__managed">{{ t('compose.managedByStackService') }}</p>
         </div>
         <div class="compose-editor__actions">
           <el-button class="ui-button ui-button--muted" :disabled="loading || saving" @click="$emit('close')">
@@ -115,11 +115,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onUnmounted } from "vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage } from "element-plus";
 import { useI18n } from "vue-i18n";
 import { Loading, SuccessFilled, WarningFilled, DocumentCopy } from "@element-plus/icons-vue";
 import { apiClient } from "@/api/client";
 import { streamSse } from "@/api/sse";
+import { useConfirm } from "@/composables/useConfirm";
 import { Terminal as XtermTerminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -134,6 +135,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: []; saved: [] }>();
 
 const { t } = useI18n();
+const { confirm } = useConfirm();
 
 const loading = ref(false);
 const saving = ref<"save" | "deploy" | null>(null);
@@ -296,7 +298,7 @@ async function save(deploy: boolean) {
 
   const actionLabel = createMode.value ? t("compose.createAction") : t("compose.saveAction");
   try {
-    await ElMessageBox.confirm(
+    await confirm(
       deploy
         ? t("compose.confirmDeploy", { action: actionLabel, name: stackNameForRequest })
         : t("compose.confirmSave", { action: actionLabel, name: stackNameForRequest }),
@@ -304,11 +306,12 @@ async function save(deploy: boolean) {
         ? t("compose.confirmDeployTitle", { action: actionLabel })
         : t("compose.confirmSaveTitle", { action: actionLabel }),
       {
+        tone: deploy ? "warning" : "info",
         confirmButtonText: deploy
           ? t("compose.confirmDeployTitle", { action: actionLabel })
           : actionLabel,
         cancelButtonText: t("compose.cancel"),
-        type: deploy ? "warning" : "info",
+        confirmButtonClass: "pg-confirm-btn",
       }
     );
   } catch {

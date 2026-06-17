@@ -18,8 +18,6 @@ from app.schemas import (
     StackOperationResponse,
     StackSummary,
 )
-from app.services.crypto import decrypt_credentials
-from app.services.dockge_client import dockge_pool
 from app.services.agent_client import AgentClient
 from app.services.snapshot import snapshot_manager
 
@@ -153,20 +151,17 @@ async def get_stack_compose(host_id: str, stack_name: str):
     if snap is None or snap.host_config is None:
         raise HTTPException(status_code=404, detail=f"Host '{host_id}' not found")
 
-    conn = None
+    if not snap.host_config.agent_url:
+        raise HTTPException(status_code=400, detail="Host has no agent_url configured")
+
+    conn = AgentClient(snap.host_config)
     try:
-        if snap.host_config.agent_url:
-            conn = AgentClient(snap.host_config)
-            result = await conn.get_stack(stack_name)
-        else:
-            creds = decrypt_credentials(snap.host_config.dockge_password_encrypted)
-            conn = await dockge_pool.get_or_create(snap.host_config, creds["password"])
-            result = await conn.get_stack(stack_name)
+        result = await conn.get_stack(stack_name)
         detail = _normalize_stack_detail(stack_name, result or {})
         if not detail.compose_yaml.strip():
             raise HTTPException(
                 status_code=409,
-                detail="Dockge/Agent did not return a compose file for this stack.",
+                detail="Agent did not return a compose file for this stack.",
             )
         return detail
     except HTTPException:
@@ -174,8 +169,7 @@ async def get_stack_compose(host_id: str, stack_name: str):
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     finally:
-        if conn and isinstance(conn, AgentClient):
-            await conn.close()
+        await conn.close()
 
 
 async def _save_stack_compose(
@@ -200,27 +194,18 @@ async def _save_stack_compose(
         )
         raise HTTPException(status_code=404, detail=f"Host '{host_id}' not found")
 
-    conn = None
+    if not snap.host_config.agent_url:
+        raise HTTPException(status_code=400, detail="Host has no agent_url configured")
+
+    conn = AgentClient(snap.host_config)
     try:
-        if snap.host_config.agent_url:
-            conn = AgentClient(snap.host_config)
-            result = await conn.save_stack(
-                stack_name,
-                payload.compose_yaml,
-                payload.compose_env,
-                deploy=False,
-                is_add=payload.is_add,
-            )
-        else:
-            creds = decrypt_credentials(snap.host_config.dockge_password_encrypted)
-            conn = await dockge_pool.get_or_create(snap.host_config, creds["password"])
-            result = await conn.save_stack(
-                stack_name,
-                payload.compose_yaml,
-                payload.compose_env,
-                deploy=False,
-                is_add=payload.is_add,
-            )
+        result = await conn.save_stack(
+            stack_name,
+            payload.compose_yaml,
+            payload.compose_env,
+            deploy=False,
+            is_add=payload.is_add,
+        )
 
         _write_audit_log(
             session, username, "stack.compose.save",
@@ -246,8 +231,7 @@ async def _save_stack_compose(
             raise
         raise HTTPException(status_code=502, detail=str(exc))
     finally:
-        if conn and isinstance(conn, AgentClient):
-            await conn.close()
+        await conn.close()
 
 
 @router.put(
@@ -308,29 +292,20 @@ async def deploy_stack_compose(
     async def _stream() -> AsyncGenerator[str, None]:
         log_queue: asyncio.Queue = asyncio.Queue()
         task: Optional[asyncio.Task] = None
-        conn: Optional[AgentClient] = None
+        if not snap.host_config.agent_url:
+            yield _sse_event("error", {"message": "Host has no agent_url configured"})
+            return
+
+        conn = AgentClient(snap.host_config)
         try:
-            if snap.host_config.agent_url:
-                conn = AgentClient(snap.host_config)
-                task = asyncio.create_task(
-                    conn.save_stack(
-                        stack_name, payload.compose_yaml, payload.compose_env,
-                        deploy=True,
-                        is_add=payload.is_add,
-                        log_queue=log_queue,
-                    )
+            task = asyncio.create_task(
+                conn.save_stack(
+                    stack_name, payload.compose_yaml, payload.compose_env,
+                    deploy=True,
+                    is_add=payload.is_add,
+                    log_queue=log_queue,
                 )
-            else:
-                creds = decrypt_credentials(snap.host_config.dockge_password_encrypted)
-                dockge_conn = await dockge_pool.get_or_create(snap.host_config, creds["password"])
-                task = asyncio.create_task(
-                    dockge_conn.save_stack(
-                        stack_name, payload.compose_yaml, payload.compose_env,
-                        deploy=True,
-                        is_add=payload.is_add,
-                        log_queue=log_queue,
-                    )
-                )
+            )
 
             while True:
                 chunk = await log_queue.get()
@@ -406,15 +381,12 @@ async def delete_stack(
         host_id, stack_name, "running", "Delete started", ip,
     )
 
-    conn = None
+    if not snap.host_config.agent_url:
+        raise HTTPException(status_code=400, detail="Host has no agent_url configured")
+
+    conn = AgentClient(snap.host_config)
     try:
-        if snap.host_config.agent_url:
-            conn = AgentClient(snap.host_config)
-            result = await conn.delete_stack(stack_name)
-        else:
-            creds = decrypt_credentials(snap.host_config.dockge_password_encrypted)
-            conn = await dockge_pool.get_or_create(snap.host_config, creds["password"])
-            result = await conn.delete_stack(stack_name)
+        result = await conn.delete_stack(stack_name)
 
         _write_audit_log(
             session, username, "stack.delete",
@@ -439,8 +411,7 @@ async def delete_stack(
         )
         raise HTTPException(status_code=502, detail=str(exc))
     finally:
-        if conn and isinstance(conn, AgentClient):
-            await conn.close()
+        await conn.close()
 
 
 @router.post("/hosts/{host_id}/prune")
@@ -560,12 +531,11 @@ async def get_stack_logs(
     if not stack_containers:
         return {"logs": "", "host_id": host_id, "stack": stack_name}
 
+    if not snap.host_config.agent_url:
+        raise HTTPException(status_code=400, detail="Host has no agent_url configured")
+
     # Create a proxy client for this host and fetch logs per container
-    if snap.host_config.agent_url:
-        proxy = AgentClient(snap.host_config)
-    else:
-        from app.services.docker_proxy import DockerProxyClient
-        proxy = DockerProxyClient(snap.host_config)
+    proxy = AgentClient(snap.host_config)
     try:
         logs_parts: list[str] = []
         for c in stack_containers:
@@ -615,11 +585,14 @@ async def stream_stack_logs(
             )
             return
 
-        if snap.host_config.agent_url:
-            proxy = AgentClient(snap.host_config)
-        else:
-            from app.services.docker_proxy import DockerProxyClient
-            proxy = DockerProxyClient(snap.host_config)
+        if not snap.host_config.agent_url:
+            yield _sse_event(
+                "complete",
+                {"message": "Host has no agent_url configured"},
+            )
+            return
+
+        proxy = AgentClient(snap.host_config)
         queue: asyncio.Queue = asyncio.Queue()
         tasks: list[asyncio.Task] = []
         done_task: Optional[asyncio.Task] = None
@@ -755,20 +728,15 @@ async def stack_action(
     async def _stream() -> AsyncGenerator[str, None]:
         log_queue: asyncio.Queue = asyncio.Queue()
         task: Optional[asyncio.Task] = None
-        conn: Optional[AgentClient] = None
+        if not snap.host_config.agent_url:
+            yield _sse_event("error", {"message": "Host has no agent_url configured"})
+            return
+
+        conn = AgentClient(snap.host_config)
         try:
-            if snap.host_config.agent_url:
-                conn = AgentClient(snap.host_config)
-                task = asyncio.create_task(
-                    conn.stack_action(stack_name, socket_event, log_queue=log_queue)
-                )
-            else:
-                creds = decrypt_credentials(snap.host_config.dockge_password_encrypted)
-                dockge_conn = await dockge_pool.get_or_create(snap.host_config, creds["password"])
-                dockge_event = "stopStack" if socket_event == "downStack" else socket_event
-                task = asyncio.create_task(
-                    dockge_conn.stack_action(stack_name, dockge_event, log_queue=log_queue)
-                )
+            task = asyncio.create_task(
+                conn.stack_action(stack_name, socket_event, log_queue=log_queue)
+            )
 
             while True:
                 chunk = await log_queue.get()
