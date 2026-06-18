@@ -3,6 +3,7 @@
     :model-value="visible"
     :size="drawerSize"
     class="compose-drawer"
+    :class="{ 'is-dragging-drawer': isDragging }"
     :with-header="false"
     @close="$emit('close')"
   >
@@ -70,7 +71,8 @@
           <MonacoEditor
             v-model="composeYaml"
             language="yaml"
-            height="520px"
+            height="100%"
+            word-wrap="on"
             :readonly="!canUseEditor"
             :disabled="!!saving"
           />
@@ -79,7 +81,8 @@
           <MonacoEditor
             v-model="composeEnv"
             language="ini"
-            height="400px"
+            height="100%"
+            word-wrap="on"
             :readonly="!canUseEditor"
             :disabled="!!saving"
           />
@@ -163,24 +166,52 @@ const drawerWidthPct = ref<number>(
 
 const drawerSize = computed(() => `${drawerWidthPct.value}%`);
 
+// Toggled during drag so we can disable Element's `transition: all 0.3s`
+// on .el-drawer (which otherwise animates every width update → "不跟手").
+const isDragging = ref(false);
+
 function startDrag(e: MouseEvent) {
   e.preventDefault();
   const startX = e.clientX;
   const startPct = drawerWidthPct.value;
+  let nextPct = startPct;
+  let rafId: number | null = null;
+
+  // Disable the drawer's width transition so width tracks the pointer instantly
+  isDragging.value = true;
+
+  function flush() {
+    rafId = null;
+    drawerWidthPct.value = nextPct;
+  }
 
   function onMove(ev: MouseEvent) {
     // Drawer opens from the right, so dragging left = wider
     const deltaPx = startX - ev.clientX;
     const deltaPct = (deltaPx / window.innerWidth) * 100;
-    drawerWidthPct.value = clampPct(startPct + deltaPct);
+    nextPct = clampPct(startPct + deltaPct);
+    // Coalesce mousemove bursts into a single reactive update per animation frame
+    if (rafId === null) {
+      rafId = requestAnimationFrame(flush);
+    }
   }
 
   function onUp() {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    drawerWidthPct.value = nextPct;
+    isDragging.value = false;
+    document.body.style.removeProperty("cursor");
+    document.body.style.removeProperty("user-select");
     window.removeEventListener("mousemove", onMove);
     window.removeEventListener("mouseup", onUp);
     try { localStorage.setItem(STORAGE_KEY, String(drawerWidthPct.value)); } catch {}
   }
 
+  document.body.style.cursor = "ew-resize";
+  document.body.style.userSelect = "none";
   window.addEventListener("mousemove", onMove);
   window.addEventListener("mouseup", onUp);
 }
@@ -620,6 +651,20 @@ async function copyDeployOutput() {
 </script>
 
 <style scoped>
+/* Element Plus `.el-drawer` carries `transition: all 0.3s` (drawer.scss),
+   which animates EVERY width write during drag → the panel chases the
+   pointer instead of tracking it = the "不跟手" feel. We disable it while
+   `is-dragging-drawer` is set (see global override in styles/dashboard.css —
+   done globally because scoped `:deep()` + forwarded root classes interact
+   unpredictably, and a global rule with our own class is unambiguous). */
+
+/* `.compose-drawer` is forwarded onto `.el-drawer` (its root DOM), so this
+   descendant combinator reliably reaches the body. */
+.compose-drawer :deep(.el-drawer__body) {
+  padding: 0;
+  overflow: hidden;
+}
+
 /* ── Drag handle ── */
 .compose-drawer__resize-handle {
   position: absolute;
@@ -642,7 +687,8 @@ async function copyDeployOutput() {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .compose-editor__header {
@@ -651,6 +697,7 @@ async function copyDeployOutput() {
   justify-content: space-between;
   gap: 16px;
   border-bottom: 1px solid var(--border-subtle);
+  padding-top: 6px;
   padding-bottom: 14px;
 }
 
@@ -711,7 +758,21 @@ async function copyDeployOutput() {
 }
 
 .compose-tabs {
+  flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.compose-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.compose-tabs :deep(.el-tab-pane) {
+  height: 100%;
 }
 
 /* Monaco editor handles its own typography */

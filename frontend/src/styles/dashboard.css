@@ -197,6 +197,14 @@ button:focus-visible,
   background: var(--surface-base) !important;
 }
 
+/* Disable Element's `transition: all 0.3s` on .el-drawer while the
+   ComposeDrawer is being resized via its custom drag handle. Without this,
+   every width write animates over 300ms → the edge chases the pointer
+   ("不跟手"). `is-dragging-drawer` is toggled in ComposeDrawer.startDrag. */
+.el-drawer.is-dragging-drawer {
+  transition: none !important;
+}
+
 /* Alert */
 .el-alert {
   background: var(--surface-panel) !important;

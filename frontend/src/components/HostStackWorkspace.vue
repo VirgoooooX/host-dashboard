@@ -279,8 +279,8 @@
           @cancel="cancelOperation(selectedStack.name)"
         />
 
-        <div class="stack-detail-grid">
-          <div class="detail-left-column">
+        <div class="stack-detail-grid" ref="detailGridRef">
+          <div class="detail-left-column" :style="{ flex: `0 0 ${detailLeftPct}%` }">
             <section class="workspace-section">
               <div class="section-heading">
                 <h3>{{ t('workspace.containerGroup') }}</h3>
@@ -375,6 +375,8 @@
               </div>
             </section>
           </div>
+
+          <div class="detail-grid-resizer" @mousedown="startDetailResize" />
 
           <aside class="detail-panel">
             <div class="panel-header">
@@ -973,6 +975,74 @@ const composeYaml = ref("");
 const composeFileName = ref("compose.yaml");
 const composeLoading = ref(false);
 const composeError = ref("");
+
+// ── Draggable detail‑grid split ─────────────────────────────────────────────
+const DETAIL_SPLIT_KEY = "detail-grid-split-pct";
+const DETAIL_MIN_LEFT_PCT = 25;
+const DETAIL_MAX_LEFT_PCT = 80;
+const DETAIL_DEFAULT_PCT = 65;
+
+const detailGridRef = ref<HTMLElement | null>(null);
+const detailLeftPct = ref<number>(
+  (() => {
+    try {
+      const v = parseFloat(localStorage.getItem(DETAIL_SPLIT_KEY) || "");
+      return isNaN(v) ? DETAIL_DEFAULT_PCT : Math.min(DETAIL_MAX_LEFT_PCT, Math.max(DETAIL_MIN_LEFT_PCT, v));
+    } catch {
+      return DETAIL_DEFAULT_PCT;
+    }
+  })()
+);
+
+function startDetailResize(e: MouseEvent) {
+  e.preventDefault();
+  const grid = detailGridRef.value;
+  if (!grid) return;
+  const gridRect = grid.getBoundingClientRect();
+  const startX = e.clientX;
+  const startPct = detailLeftPct.value;
+  let nextPct = startPct;
+  let rafId: number | null = null;
+
+  function flush() {
+    rafId = null;
+    detailLeftPct.value = nextPct;
+  }
+
+  function onMove(ev: MouseEvent) {
+    const deltaPx = ev.clientX - startX;
+    const deltaPct = (deltaPx / gridRect.width) * 100;
+    nextPct = Math.min(
+      DETAIL_MAX_LEFT_PCT,
+      Math.max(DETAIL_MIN_LEFT_PCT, startPct + deltaPct)
+    );
+    // Coalesce mousemove bursts into a single reactive update per animation frame
+    if (rafId === null) {
+      rafId = requestAnimationFrame(flush);
+    }
+  }
+
+  function onUp() {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    detailLeftPct.value = nextPct;
+    document.body.style.removeProperty("cursor");
+    document.body.style.removeProperty("user-select");
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+    try {
+      localStorage.setItem(DETAIL_SPLIT_KEY, String(detailLeftPct.value));
+    } catch {}
+  }
+
+  document.body.style.cursor = "col-resize";
+  document.body.style.userSelect = "none";
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 const logLines = ref<StackLogLine[]>([]);
 const logsLoading = ref(false);
@@ -2527,13 +2597,12 @@ onUnmounted(() => {
 }
 
 .stack-detail-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.7fr);
-  gap: 16px;
+  display: flex;
   flex: 1;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  gap: 0;
 }
 
 .card-operation-dock {
@@ -2550,10 +2619,49 @@ onUnmounted(() => {
   gap: 16px;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Draggable Resizer between left-column and detail-panel ── */
+.detail-grid-resizer {
+  flex: 0 0 6px;
+  cursor: col-resize;
+  position: relative;
+  z-index: 2;
+  margin: 0 2px;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+
+.detail-grid-resizer::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 32px;
+  border-radius: 3px;
+  background: var(--border-subtle);
+  transition: background 0.18s, height 0.18s;
+}
+
+.detail-grid-resizer:hover::after,
+.detail-grid-resizer:active::after {
+  background: var(--accent-blue, #3b82f6);
+  height: 48px;
+}
+
+.detail-grid-resizer:hover {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.detail-grid-resizer:active {
+  background: rgba(59, 130, 246, 0.10);
 }
 
 .workspace-section,
-.detail-panel {
+.workspace-section {
   padding: 16px;
   min-width: 0;
 }
@@ -2561,7 +2669,11 @@ onUnmounted(() => {
 .detail-panel {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  padding: 16px;
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .container-row {
@@ -3554,7 +3666,15 @@ onUnmounted(() => {
   }
 
   .stack-detail-grid {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .stack-detail-grid .detail-left-column {
+    flex: none !important;
+  }
+
+  .detail-grid-resizer {
+    display: none;
   }
 }
 

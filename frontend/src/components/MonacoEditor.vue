@@ -55,6 +55,7 @@ const containerRef = ref<HTMLElement | null>(null);
 let editor: monaco.editor.IStandaloneCodeEditor | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let themeObserver: MutationObserver | null = null;
+let layoutRafId: number | null = null;
 
 // ─── Theme helpers ────────────────────────────────────────────────────────────
 
@@ -160,10 +161,23 @@ onMounted(() => {
     }
   });
 
-  // ResizeObserver for layout updates
-  resizeObserver = new ResizeObserver(() => {
-    editor?.layout();
-  });
+  // ResizeObserver for layout updates.
+  // Coalesce notifications via requestAnimationFrame so a burst of resize events
+  // (e.g. while dragging the drawer width) collapses into a single layout() per frame.
+  // editor.layout() is expensive; calling it on every ResizeObserver callback causes
+  // severe jank during continuous resize.
+  const scheduleLayout = () => {
+    if (layoutRafId !== null) return;
+    layoutRafId = requestAnimationFrame(() => {
+      layoutRafId = null;
+      // Skip hidden containers (e.g. an inactive el-tab-pane using v-show).
+      // Layout work on a display:none box is wasted and still costs CPU.
+      const el = containerRef.value;
+      if (!el || el.offsetParent === null) return;
+      editor?.layout();
+    });
+  };
+  resizeObserver = new ResizeObserver(scheduleLayout);
   resizeObserver.observe(containerRef.value);
 
   // MutationObserver for theme switching
@@ -177,6 +191,10 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  if (layoutRafId !== null) {
+    cancelAnimationFrame(layoutRafId);
+    layoutRafId = null;
+  }
   resizeObserver?.disconnect();
   themeObserver?.disconnect();
   editor?.dispose();
