@@ -4,6 +4,8 @@ param(
 
     [string] $Remote = "origin",
 
+    [switch] $WithAgent,
+
     [switch] $NoPush
 )
 
@@ -30,12 +32,14 @@ finally {
     Pop-Location
 }
 
-Push-Location fleetge-agent
-try {
-    python -m pytest test_agent.py
-}
-finally {
-    Pop-Location
+if ($WithAgent) {
+    Push-Location fleetge-agent
+    try {
+        python -m pytest test_agent.py
+    }
+    finally {
+        Pop-Location
+    }
 }
 
 git add VERSION backend/app/version.py frontend/package.json frontend/package-lock.json
@@ -46,11 +50,17 @@ if ($staged) {
 else {
     git commit --allow-empty -m "chore: release v$Version"
 }
-git tag -a "v$Version" -m "v$Version"
+$withAgentValue = if ($WithAgent) { "true" } else { "false" }
+git tag -a "v$Version" -m "v$Version" -m "with-agent=$withAgentValue"
 
 if (-not $NoPush) {
     git push $Remote HEAD
     git push $Remote "v$Version"
 }
 
-Write-Host "Release v$Version is ready. GitHub Actions will build app and agent images and create the release from the tag."
+if ($WithAgent) {
+    Write-Host "Release v$Version is ready. GitHub Actions will build app and agent images and create the release from the tag."
+}
+else {
+    Write-Host "Release v$Version is ready. GitHub Actions will build the app image and create the release from the tag."
+}
