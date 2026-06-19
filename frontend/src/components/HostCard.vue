@@ -57,12 +57,12 @@
           <svg width="100%" height="24" viewBox="0 0 100 24" preserveAspectRatio="none">
             <defs>
               <linearGradient :id="`cpuGrad-${host.host_id}`" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="var(--accent-blue)" stop-opacity="0.18"/>
-                <stop offset="100%" stop-color="var(--accent-blue)" stop-opacity="0.0"/>
+                <stop offset="0%" stop-color="var(--accent-blue)" stop-opacity="0.45"/>
+                <stop offset="100%" stop-color="var(--accent-blue)" stop-opacity="0.04"/>
               </linearGradient>
             </defs>
             <path v-if="cpuPaths.fill" :d="cpuPaths.fill" :fill="`url(#cpuGrad-${host.host_id})`"/>
-            <path v-if="cpuPaths.stroke" :d="cpuPaths.stroke" fill="none" stroke="var(--accent-blue)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path v-if="cpuPaths.stroke" :d="cpuPaths.stroke" fill="none" stroke="var(--accent-blue)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
       </div>
@@ -136,12 +136,12 @@
           <svg width="100%" height="20" viewBox="0 0 100 20" preserveAspectRatio="none">
             <defs>
               <linearGradient :id="`netGrad-${host.host_id}`" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.15"/>
-                <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.0"/>
+                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.42"/>
+                <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.04"/>
               </linearGradient>
             </defs>
             <path v-if="netPaths.fill" :d="netPaths.fill" :fill="`url(#netGrad-${host.host_id})`"/>
-            <path v-if="netPaths.stroke" :d="netPaths.stroke" fill="none" stroke="#06b6d4" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/>
+            <path v-if="netPaths.stroke" :d="netPaths.stroke" fill="none" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
       </div>
@@ -177,17 +177,17 @@
     <div class="m-footer">
       <div class="m-foot-item flex-center" :title="t('hostCard.runningContainers')">
         <span class="foot-dot green"></span>
-        <strong class="font-mono">{{ host.container_running }}</strong>
+        <strong>{{ host.container_running }}</strong>
       </div>
       <div class="m-foot-item flex-center" :title="t('hostCard.stoppedContainers')">
         <span class="foot-dot red"></span>
-        <strong class="font-mono">{{ host.container_stopped }}</strong>
+        <strong>{{ host.container_stopped }}</strong>
       </div>
       <div class="m-foot-item flex-center m-foot-item--images" :title="t('hostCard.imageCount')">
         <span class="footer-icon-wrap" v-html="vibrantIcons.images"></span>
-        <strong class="font-mono">{{ host.image_count }}</strong>
+        <strong>{{ host.image_count }}</strong>
       </div>
-      <div class="m-foot-item flex-center m-foot-item--version font-mono" :title="`Docker ${host.docker_version || '-'}`">
+      <div class="m-foot-item flex-center m-foot-item--version" :title="`Docker ${host.docker_version || '-'}`">
         <span class="footer-icon-wrap docker-icon" v-html="vibrantIcons.docker"></span>
         <span class="m-version-text">
           {{ host.docker_version ? `v${host.docker_version}` : '-' }}
@@ -357,7 +357,21 @@ const vibrantIcons = {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 .host-card {
+  font-family: "Inter", "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif !important;
+
+  /* Typography Variables Scoped locally to HostCard */
+  --font-size-title: 19px;
+  --font-size-data: 15px;
+  --font-size-label: 13px;
+  --font-size-micro: 11.5px;
+
+  --weight-bold: 800;
+  --weight-medium: 700;
+  --weight-regular: 400;
+
   cursor: pointer;
   min-height: 286px;
   background: var(--host-card-bg) !important;
@@ -394,7 +408,8 @@ const vibrantIcons = {
   min-width: 0;
 }
 .host-name {
-  font-size: 16px;
+  font-size: var(--font-size-title);
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -409,33 +424,33 @@ const vibrantIcons = {
 
 /* Pills & Badges */
 .m-badge-danger {
-  font-size: 10.5px;
+  font-size: var(--font-size-micro);
   color: var(--danger);
   background: rgba(248, 113, 113, 0.10);
   border: 1px solid rgba(248, 113, 113, 0.18);
   padding: 1px 8px;
   border-radius: 999px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   white-space: nowrap;
 }
 .m-badge-success-pill {
-  font-size: 11px;
+  font-size: var(--font-size-micro);
   color: var(--success);
   border: 1px solid rgba(52, 211, 153, 0.24);
   background: rgba(52, 211, 153, 0.06);
   padding: 1px 9px;
   border-radius: 999px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   white-space: nowrap;
 }
 .m-badge-offline-pill {
-  font-size: 11px;
+  font-size: var(--font-size-micro);
   color: var(--text-muted);
   border: 1px solid var(--border-subtle);
   background: var(--surface-muted);
   padding: 1px 9px;
   border-radius: 999px;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   white-space: nowrap;
 }
 
@@ -447,7 +462,8 @@ const vibrantIcons = {
 }
 
 .host-subtitle {
-  font-size: 12px;
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-regular);
   color: var(--text-muted);
   margin-top: 3px;
   margin-left: 18px;
@@ -499,12 +515,13 @@ const vibrantIcons = {
 .icon-wrapper.disk-color { background: rgba(99, 102, 241, 0.08); color: #6366f1; }
 
 .sub-label {
-  font-size: 12px;
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-medium);
   color: var(--text-secondary);
-  font-weight: 600;
 }
 .sub-value {
-  font-size: 13.5px;
+  font-size: var(--font-size-data);
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
   line-height: 1.25;
   display: flex;
@@ -516,22 +533,22 @@ const vibrantIcons = {
   width: 2.6em;
   display: inline-block;
   text-align: right;
-  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
 }
 .val-unit {
   width: 1.5em;
   display: inline-block;
   text-align: right;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-micro);
 }
 .sub-value small {
-  font-size: 10px;
-  font-weight: normal;
+  font-size: var(--font-size-micro);
+  font-weight: var(--weight-regular);
   color: var(--text-muted);
-  font-family: var(--font-mono);
 }
 
 .m-progress-row {
@@ -554,9 +571,10 @@ const vibrantIcons = {
   transition: width 0.3s ease;
 }
 .m-percent-label {
-  font-size: 10px;
+  font-size: var(--font-size-micro);
+  font-weight: var(--weight-regular);
+  font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
-  font-family: var(--font-mono);
 }
 
 .sub-chart {
@@ -573,7 +591,7 @@ const vibrantIcons = {
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(96px, 1fr) minmax(96px, 1fr);
+  grid-template-columns: minmax(0, 2.2fr) minmax(88px, 0.9fr) minmax(88px, 0.9fr);
   padding: 12px;
   margin-bottom: 12px;
   min-height: 110px;
@@ -597,12 +615,12 @@ const vibrantIcons = {
   justify-content: flex-start;
 }
 .m-tel-header {
-  font-size: 12px;
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-medium);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 6px;
-  font-weight: 600;
 }
 .icon-wrapper-inline {
   width: 22px;
@@ -625,7 +643,7 @@ const vibrantIcons = {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-top: 0;
   padding-bottom: 22px;
   line-height: 1;
@@ -642,7 +660,7 @@ const vibrantIcons = {
 .net-arrow {
   width: 14px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--font-size-data);
   font-weight: 900;
   flex-shrink: 0;
   line-height: 1;
@@ -650,25 +668,21 @@ const vibrantIcons = {
 .net-arrow.up   { color: #10b981; }
 .net-arrow.down { color: #f59e0b; }
 .net-amount {
-  font-size: 13.5px;
+  font-size: var(--font-size-data);
   line-height: 1;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
-  font-family: var(--font-mono);
-  width: 3.5em;
+  font-variant-numeric: tabular-nums;
   display: inline-block;
-  text-align: right;
 }
 .net-unit {
-  font-size: 10px;
+  font-size: var(--font-size-micro);
   line-height: 1;
-  font-weight: normal;
+  font-weight: var(--weight-regular);
   color: var(--text-muted);
-  font-family: var(--font-mono);
   flex-shrink: 0;
-  width: 3em;
   display: inline-block;
-  text-align: right;
+  margin-left: 2px;
 }
 .m-net-chart {
   position: absolute;
@@ -703,25 +717,21 @@ const vibrantIcons = {
   z-index: 1;
 }
 .io-amount {
-  font-size: 13.5px;
+  font-size: var(--font-size-data);
   line-height: 1;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
-  font-family: var(--font-mono);
-  width: 3.5em;
+  font-variant-numeric: tabular-nums;
   display: inline-block;
-  text-align: right;
 }
 .io-unit {
-  font-size: 10px;
+  font-size: var(--font-size-micro);
   line-height: 1;
-  font-weight: normal;
+  font-weight: var(--weight-regular);
   color: var(--text-muted);
-  font-family: var(--font-mono);
   flex-shrink: 0;
-  width: 3em;
   display: inline-block;
-  text-align: right;
+  margin-left: 2px;
 }
 
 .metrics-missing {
@@ -731,7 +741,8 @@ const vibrantIcons = {
   border: 1px dashed var(--border-subtle);
   border-radius: 8px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-regular);
   margin-bottom: 16px;
 }
 
@@ -745,12 +756,17 @@ const vibrantIcons = {
 }
 .m-foot-item {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--font-size-label);
   color: var(--text-primary);
   border-right: 1px solid var(--border-subtle);
   height: 18px;
   gap: 4px;
   min-width: 0;
+}
+.m-foot-item strong {
+  font-size: var(--font-size-data);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
 }
 .foot-dot {
   width: 8px;
@@ -781,13 +797,13 @@ const vibrantIcons = {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--font-size-micro);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
   opacity: 0.82;
 }
 
-.font-bold { font-weight: 700; }
-.font-mono { font-family: var(--font-mono); }
+.font-bold { font-weight: var(--weight-bold); }
 .text-right { text-align: right; }
 
 @media (max-width: 420px) {
