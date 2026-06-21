@@ -38,3 +38,4 @@ tmp/
 *-dev.err.log
 *-dev.out.log
 docs/superpowers/specs/2026-06-16-i18n-integration-design.md
+.codex-tmp/
