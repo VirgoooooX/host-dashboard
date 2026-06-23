@@ -183,7 +183,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - AGENT_TOKEN=your_agent_secret_token  # 对应主控端 hosts.yaml 中的 token
+      - AGENT_TOKEN=your_long_random_agent_token  # 至少 32 个字符，建议 openssl rand -hex 32
+      - AGENT_SECRET_PATH=/your-random-agent-path # 主控端 agent.url 需带该路径，如 http://host:8080/your-random-agent-path
+      - AGENT_REQUIRE_TOKEN=true              # 默认 true，Token 为空或过短时拒绝启动
+      - AGENT_PUBLIC_HEALTH=false             # 默认 false，health 端点也需要鉴权
+      - AGENT_ENABLE_PRUNE=false              # 默认 false，按需开启 Docker system prune
       - STACKS_BASE_DIR=/opt/stacks          # Docker Compose 文件在宿主机的存放目录
       - DISK_PATHS=/                         # 监控的宿主机挂载点，多个用逗号分隔
       - COLLECT_INTERVAL=5                   # 指标采集频率 (秒)
@@ -367,7 +371,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - AGENT_TOKEN=your_agent_secret_token  # Must match the token configured in hosts.yaml
+      - AGENT_TOKEN=your_long_random_agent_token  # At least 32 chars; openssl rand -hex 32 is recommended
+      - AGENT_SECRET_PATH=/your-random-agent-path # Include this path in the dashboard agent.url
+      - AGENT_REQUIRE_TOKEN=true              # Default true; refuse empty or short tokens
+      - AGENT_PUBLIC_HEALTH=false             # Default false; health also requires auth
+      - AGENT_ENABLE_PRUNE=false              # Default false; enable Docker system prune only if needed
       - STACKS_BASE_DIR=/opt/stacks          # The host path where Compose stacks are located
       - DISK_PATHS=/                         # Mount points to monitor (comma separated)
       - COLLECT_INTERVAL=5                   # Metric polling interval in seconds

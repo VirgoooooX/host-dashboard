@@ -14,8 +14,13 @@ services:
       # ═══════════════════════════════════════════════════════════
       # 必填 — 部署前修改
       # ═══════════════════════════════════════════════════════════
-      # Agent API 鉴权令牌，后端 hosts.yaml 中 agent.token 需与此一致
-      AGENT_TOKEN: your-secure-token-here
+      # Agent API 鉴权令牌，后端 hosts.yaml 中 agent.token 需与此一致。
+      # 生成: openssl rand -hex 32
+      AGENT_TOKEN: replace-with-a-long-random-token
+      # 随机访问前缀，后端 hosts.yaml 中 agent.url 需带上该路径。
+      # 生成: openssl rand -hex 12
+      # 示例: http://your-vps:8080/fleetge-a1b2c3d4e5f6
+      AGENT_SECRET_PATH: /replace-with-random-path
       # Compose 文件存放的宿主机目录
       STACKS_BASE_DIR: /opt/stacks
 
@@ -28,14 +33,22 @@ services:
       DISK_PATHS: /
       # 日志级别: DEBUG / INFO / WARNING / ERROR，默认 INFO
       AGENT_LOG_LEVEL: INFO
+      # 强制要求 Token 鉴权，为空或长度不足时拒绝启动（默认 true）
+      AGENT_REQUIRE_TOKEN: true
+      # 公开 health 端点会暴露 agent 指纹，默认关闭
+      AGENT_PUBLIC_HEALTH: false
+      # 危险功能开关。Prune 默认关闭，需要时再打开。
+      AGENT_ENABLE_WRITE: true
+      AGENT_ENABLE_DELETE: true
+      AGENT_ENABLE_GLOBAL_ENV: true
+      AGENT_ENABLE_PRUNE: false
+      AGENT_ENABLE_SELF_UPDATE: true
 
       # ═══════════════════════════════════════════════════════════
       # 高级 — 通常不需修改
       # ═══════════════════════════════════════════════════════════
       # Docker daemon 地址，留空自动检测（Unix socket 或 Windows 127.0.0.1:2375）
       # DOCKER_HOST: unix:///var/run/docker.sock
-      # 强制要求 Token 鉴权，为空时拒绝启动（默认 false）
-      # AGENT_REQUIRE_TOKEN: false
 
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

@@ -6,13 +6,27 @@ import json
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 STACKS_BASE_DIR = os.environ.get("STACKS_BASE_DIR", "/opt/stacks")
 FLEETGE_STACK_NAME = os.environ.get("FLEETGE_STACK_NAME", "").strip()
 FLEETGE_AGENT_SERVICE = os.environ.get("FLEETGE_AGENT_SERVICE", "").strip()
 FLEETGE_UPDATER_IMAGE = os.environ.get("FLEETGE_UPDATER_IMAGE", "").strip()
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+AGENT_ENABLE_WRITE = _env_bool("AGENT_ENABLE_WRITE", True)
+AGENT_ENABLE_DELETE = _env_bool("AGENT_ENABLE_DELETE", True)
+AGENT_ENABLE_GLOBAL_ENV = _env_bool("AGENT_ENABLE_GLOBAL_ENV", True)
+AGENT_ENABLE_PRUNE = _env_bool("AGENT_ENABLE_PRUNE", False)
+AGENT_ENABLE_SELF_UPDATE = _env_bool("AGENT_ENABLE_SELF_UPDATE", True)
 
 router = APIRouter()
 
@@ -27,6 +41,51 @@ _COMPOSE_FILE_NAMES = [
     "compose.yml",
     "compose.yaml",
 ]
+
+_SENSITIVE_RE = re.compile(
+    r"(?i)\b([A-Z0-9_]*(?:PASSWORD|PASSWD|TOKEN|SECRET|KEY|AUTH|CREDENTIAL)[A-Z0-9_]*\s*[=:]\s*)([^\s'\"`]+)"
+)
+_BEARER_RE = re.compile(r"(?i)(Authorization:\s*Bearer\s+)[A-Za-z0-9._~+/=-]+")
+
+
+def _redact_sensitive_text(text: str) -> str:
+    text = _SENSITIVE_RE.sub(r"\1[REDACTED]", text)
+    return _BEARER_RE.sub(r"\1[REDACTED]", text)
+
+
+def _client_host(request: Request | WebSocket | None) -> str:
+    if request and request.client and request.client.host:
+        return request.client.host
+    return "-"
+
+
+def _audit_log_path() -> str:
+    path = os.path.join(os.path.realpath(STACKS_BASE_DIR), ".fleetge")
+    os.makedirs(path, exist_ok=True)
+    return os.path.join(path, "audit.log")
+
+
+async def _write_audit(action: str, result: str, *, stack: str = "", client: str = "-", detail: str = "") -> None:
+    safe_detail = _redact_sensitive_text((detail or "").replace("\r", " ").replace("\n", " "))[:500]
+    line = "\t".join([
+        _utc_now_iso(),
+        client or "-",
+        action,
+        stack or "-",
+        result,
+        safe_detail,
+    ]) + "\n"
+
+    def append() -> None:
+        with open(_audit_log_path(), "a", encoding="utf-8", errors="replace") as f:
+            f.write(line)
+
+    await asyncio.to_thread(append)
+
+
+def _require_enabled(enabled: bool, feature: str) -> None:
+    if not enabled:
+        raise HTTPException(status_code=403, detail=f"{feature} is disabled by agent policy.")
 
 # Concurrent locks per stack name
 _locks: dict[str, asyncio.Lock] = {}
@@ -135,7 +194,7 @@ async def _append_job_log(job_id: str, text: str) -> None:
 def _append_job_log_sync(log_path: str, text: str) -> None:
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
     with open(log_path, "a", encoding="utf-8", errors="replace") as f:
-        f.write(text)
+        f.write(_redact_sensitive_text(text))
 
 
 async def _create_job(action: str, stack_name: str, services: list[str]) -> str:
@@ -389,8 +448,9 @@ async def get_global_env():
 
 
 @router.put("/global-env")
-async def save_global_env(payload: GlobalEnvRequest):
+async def save_global_env(payload: GlobalEnvRequest, request: Request):
     """Write or remove STACKS_BASE_DIR/global.env."""
+    _require_enabled(AGENT_ENABLE_GLOBAL_ENV, "global-env writes")
     os.makedirs(STACKS_BASE_DIR, exist_ok=True)
     env_path = os.path.join(os.path.realpath(STACKS_BASE_DIR), "global.env")
     try:
@@ -399,8 +459,10 @@ async def save_global_env(payload: GlobalEnvRequest):
                 f.write(payload.content)
         elif os.path.isfile(env_path):
             os.remove(env_path)
+        await _write_audit("global_env.save", "success", client=_client_host(request))
         return {"success": True, "message": "global.env saved successfully."}
     except Exception as exc:
+        await _write_audit("global_env.save", "error", client=_client_host(request), detail=str(exc))
         raise HTTPException(status_code=500, detail=f"Failed to write global.env: {exc}")
 
 
@@ -439,8 +501,9 @@ async def get_stack(name: str):
 
 
 @router.put("/stacks/{name}")
-async def save_stack(name: str, payload: StackSaveRequest):
+async def save_stack(name: str, payload: StackSaveRequest, request: Request):
     """Create or update a stack's configuration files."""
+    _require_enabled(AGENT_ENABLE_WRITE, "stack writes")
     stack_path = _get_stack_path(name)
     compose_filename = _validate_stack_payload(payload)
     compose_path = os.path.join(stack_path, compose_filename)
@@ -474,16 +537,20 @@ async def save_stack(name: str, payload: StackSaveRequest):
         elif os.path.isfile(env_path):
             os.remove(env_path)
 
+        await _write_audit("stack.save", "success", stack=name, client=_client_host(request))
         return {"success": True, "message": f"Stack '{name}' saved successfully."}
-    except HTTPException:
+    except HTTPException as exc:
+        await _write_audit("stack.save", "error", stack=name, client=_client_host(request), detail=str(exc.detail))
         raise
     except Exception as exc:
+        await _write_audit("stack.save", "error", stack=name, client=_client_host(request), detail=str(exc))
         raise HTTPException(status_code=500, detail=f"Failed to write stack files: {exc}")
 
 
 @router.delete("/stacks/{name}")
-async def delete_stack(name: str):
+async def delete_stack(name: str, request: Request):
     """Safely delete a stack directory."""
+    _require_enabled(AGENT_ENABLE_DELETE, "stack deletes")
     stack_path = _get_stack_path(name)
 
     if not os.path.isdir(stack_path):
@@ -507,10 +574,13 @@ async def delete_stack(name: str):
             )
             if exit_code != 0:
                 raise HTTPException(status_code=502, detail=output.strip() or "docker compose down failed")
+            await _write_audit("stack.delete", "success", stack=name, client=_client_host(request))
             return {"success": True, "message": f"Stack '{name}' deleted successfully."}
-        except HTTPException:
+        except HTTPException as exc:
+            await _write_audit("stack.delete", "error", stack=name, client=_client_host(request), detail=str(exc.detail))
             raise
         except Exception as exc:
+            await _write_audit("stack.delete", "error", stack=name, client=_client_host(request), detail=str(exc))
             raise HTTPException(status_code=500, detail=f"Failed to delete stack directory: {exc}")
 
 
@@ -581,7 +651,7 @@ async def _stream_with_subprocess(
                 break
             await websocket.send_json({
                 "type": "stdout",
-                "chunk": chunk.decode("utf-8", errors="replace"),
+                "chunk": _redact_sensitive_text(chunk.decode("utf-8", errors="replace")),
             })
 
         await proc.wait()
@@ -644,7 +714,7 @@ async def _stream_docker_command(
                 break
             if not chunk:
                 break
-            await websocket.send_json({"type": "stdout", "chunk": chunk})
+            await websocket.send_json({"type": "stdout", "chunk": _redact_sensitive_text(chunk)})
 
         if proc.isalive():
             await asyncio.to_thread(proc.wait)
@@ -682,7 +752,8 @@ async def _run_docker_command_capture(stack_path: str, args: list[str]) -> tuple
             stderr=asyncio.subprocess.STDOUT,
         )
         stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=300.0)
-        return proc.returncode if proc.returncode is not None else 0, stdout.decode("utf-8", errors="replace")
+        output = _redact_sensitive_text(stdout.decode("utf-8", errors="replace"))
+        return proc.returncode if proc.returncode is not None else 0, output
     except Exception as exc:
         return 1, f"Failed to run docker command: {exc}"
 
@@ -899,17 +970,30 @@ async def list_stack_services(name: str):
 async def prune_system(websocket: WebSocket):
     """Run ``docker system prune -a -f`` and stream output in real-time."""
     await websocket.accept()
+    client = _client_host(websocket)
 
     try:
+        if not AGENT_ENABLE_PRUNE:
+            await _write_audit("host.prune", "denied", client=client)
+            await websocket.send_json({"type": "error", "message": "host prune is disabled by agent policy."})
+            return
+
         exit_code = await _stream_docker_command(
             websocket, "/", ["system", "prune", "-a", "-f"]
         )
         await websocket.send_json({"type": "exit", "code": exit_code})
+        await _write_audit(
+            "host.prune",
+            "success" if exit_code == 0 else "error",
+            client=client,
+            detail=f"exit_code={exit_code}",
+        )
     except WebSocketDisconnect:
         pass
     except Exception as exc:
         import traceback
         traceback.print_exc()
+        await _write_audit("host.prune", "error", client=client, detail=str(exc))
         try:
             await websocket.send_json({"type": "error", "message": f"Prune failed: {exc}"})
         except Exception:
@@ -981,6 +1065,8 @@ async def stream_stack_compose_logs(websocket: WebSocket, name: str, tail: int =
 async def execute_stack_command(websocket: WebSocket, name: str):
     """WebSocket endpoint to execute a Docker Compose command and stream output in real-time."""
     await websocket.accept()
+    client = _client_host(websocket)
+    action = ""
 
     try:
         # Validate path
@@ -1002,6 +1088,7 @@ async def execute_stack_command(websocket: WebSocket, name: str):
         service_update_actions = {"updateServices", "updateServicesJob", "selfUpdate"}
         special_actions = {"update", "delete"} | service_actions | service_update_actions
         if action not in ACTION_ARGS and action not in special_actions:
+            await _write_audit("stack.execute", "denied", stack=name, client=client, detail=f"invalid action {action}")
             await websocket.send_json({
                 "type": "error",
                 "message": f"Invalid action '{action}'. Supported: {list(ACTION_ARGS.keys()) + sorted(special_actions)}"
@@ -1009,9 +1096,26 @@ async def execute_stack_command(websocket: WebSocket, name: str):
             await websocket.close()
             return
 
+        if action == "delete" and not AGENT_ENABLE_DELETE:
+            await _write_audit(f"stack.{action}", "denied", stack=name, client=client)
+            await websocket.send_json({"type": "error", "message": "stack deletes are disabled by agent policy."})
+            await websocket.close()
+            return
+        if action == "selfUpdate" and not AGENT_ENABLE_SELF_UPDATE:
+            await _write_audit(f"stack.{action}", "denied", stack=name, client=client)
+            await websocket.send_json({"type": "error", "message": "self update is disabled by agent policy."})
+            await websocket.close()
+            return
+        if not AGENT_ENABLE_WRITE:
+            await _write_audit(f"stack.{action}", "denied", stack=name, client=client)
+            await websocket.send_json({"type": "error", "message": "stack writes are disabled by agent policy."})
+            await websocket.close()
+            return
+
         # Acquire lock to prevent concurrent actions on the same stack
         lock = await get_stack_lock(name)
         if lock.locked():
+            await _write_audit(f"stack.{action}", "busy", stack=name, client=client)
             await websocket.send_json({
                 "type": "error",
                 "message": f"Another operation is already running for stack '{name}'."
@@ -1022,6 +1126,7 @@ async def execute_stack_command(websocket: WebSocket, name: str):
         async with lock:
             # Check compose file existence
             if _find_compose_file(stack_path) is None:
+                await _write_audit(f"stack.{action}", "error", stack=name, client=client, detail="compose file not found")
                 await websocket.send_json({
                     "type": "error",
                     "message": f"No compose file found in stack '{name}'."
@@ -1040,6 +1145,7 @@ async def execute_stack_command(websocket: WebSocket, name: str):
                         websocket, stack_path, _compose_args(stack_path, "up", "-d", "--remove-orphans"), cols=cols, rows=rows
                     )
                 await websocket.send_json({"type": "exit", "code": exit_code})
+                await _write_audit(f"stack.{action}", "success" if exit_code == 0 else "error", stack=name, client=client, detail=f"exit_code={exit_code}")
             elif action == "delete":
                 exit_code = await _stream_docker_command(
                     websocket, stack_path, _compose_args(stack_path, "down", "--remove-orphans"), cols=cols, rows=rows
@@ -1049,10 +1155,12 @@ async def execute_stack_command(websocket: WebSocket, name: str):
                         await asyncio.to_thread(shutil.rmtree, stack_path)
                         await websocket.send_json({"type": "stdout", "chunk": f"\r\nStack '{name}' directory deleted.\r\n"})
                     except Exception as exc:
+                        await _write_audit(f"stack.{action}", "error", stack=name, client=client, detail=str(exc))
                         await websocket.send_json({"type": "error", "message": f"Failed to delete stack directory: {exc}"})
                         await websocket.close()
                         return
                 await websocket.send_json({"type": "exit", "code": exit_code})
+                await _write_audit(f"stack.{action}", "success" if exit_code == 0 else "error", stack=name, client=client, detail=f"exit_code={exit_code}")
             elif action in service_actions:
                 service_name = _validate_service_name(service)
                 if action == "startService":
@@ -1063,12 +1171,14 @@ async def execute_stack_command(websocket: WebSocket, name: str):
                     args = _compose_args(stack_path, "restart", service_name)
                 exit_code = await _stream_docker_command(websocket, stack_path, args, cols=cols, rows=rows)
                 await websocket.send_json({"type": "exit", "code": exit_code})
+                await _write_audit(f"stack.{action}", "success" if exit_code == 0 else "error", stack=name, client=client, detail=f"service={service_name} exit_code={exit_code}")
             elif action in service_update_actions:
                 service_names = _validate_services(services)
                 self_info = await _get_agent_self_info()
                 is_self_stack = self_info.get("stack_name") == name
                 self_service = self_info.get("service_name") or FLEETGE_AGENT_SERVICE
                 if action != "selfUpdate" and is_self_stack and self_service in service_names:
+                    await _write_audit(f"stack.{action}", "denied", stack=name, client=client, detail="current agent service")
                     await websocket.send_json({
                         "type": "error",
                         "message": "Refusing to update the current agent service without selfUpdate handoff.",
@@ -1093,6 +1203,7 @@ async def execute_stack_command(websocket: WebSocket, name: str):
                             rows=rows,
                         )
                     await websocket.send_json({"type": "exit", "code": exit_code})
+                    await _write_audit(f"stack.{action}", "success" if exit_code == 0 else "error", stack=name, client=client, detail=f"services={','.join(service_names)} exit_code={exit_code}")
                 elif action == "updateServicesJob":
                     job_id = await _start_update_services_job(name, stack_path, service_names)
                     await websocket.send_json({
@@ -1101,6 +1212,7 @@ async def execute_stack_command(websocket: WebSocket, name: str):
                         "message": f"Started Fleetge service update job {job_id}.",
                     })
                     await websocket.send_json({"type": "exit", "code": 0})
+                    await _write_audit(f"stack.{action}", "success", stack=name, client=client, detail=f"services={','.join(service_names)} job_id={job_id}")
                 else:
                     job_id = await _start_self_updater_container(name, stack_path, service_names)
                     await websocket.send_json({
@@ -1109,10 +1221,12 @@ async def execute_stack_command(websocket: WebSocket, name: str):
                         "message": f"Handed off Fleetge self-update to job {job_id}.",
                     })
                     await websocket.send_json({"type": "exit", "code": 0})
+                    await _write_audit(f"stack.{action}", "success", stack=name, client=client, detail=f"services={','.join(service_names)} job_id={job_id}")
             else:
                 args = _compose_args(stack_path, *ACTION_ARGS[action])
                 exit_code = await _stream_docker_command(websocket, stack_path, args, cols=cols, rows=rows)
                 await websocket.send_json({"type": "exit", "code": exit_code})
+                await _write_audit(f"stack.{action}", "success" if exit_code == 0 else "error", stack=name, client=client, detail=f"exit_code={exit_code}")
 
     except WebSocketDisconnect:
         # Client disconnected prematurely; any spawned process was already terminated
@@ -1121,6 +1235,7 @@ async def execute_stack_command(websocket: WebSocket, name: str):
     except Exception as exc:
         import traceback
         traceback.print_exc()
+        await _write_audit(f"stack.{action or 'execute'}", "error", stack=name, client=client, detail=str(exc))
         try:
             await websocket.send_json({"type": "error", "message": f"Unexpected execution error: {exc}"})
         except Exception:

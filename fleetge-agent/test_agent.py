@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Mock settings before importing app
-os.environ["AGENT_TOKEN"] = "test-secret-token"
+os.environ["AGENT_TOKEN"] = "test-secret-token-0123456789abcdef"
 os.environ["STACKS_BASE_DIR"] = "/tmp/test-stacks"
 
 from main import app
@@ -31,7 +31,7 @@ def test_unauthorized():
 
 def test_authorized_header():
     """Ensure standard Bearer token header works."""
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.get("/api/agent/health", headers=headers)
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
@@ -39,19 +39,19 @@ def test_authorized_header():
 
 def test_authorized_query_param():
     """Ensure token in query param fallback works."""
-    response = client.get("/api/agent/health?token=test-secret-token")
+    response = client.get("/api/agent/health?token=test-secret-token-0123456789abcdef")
     assert response.status_code == 200
 
 
-def test_health_check_bypasses_auth():
-    """Ensure health check is accessible without a token."""
+def test_health_check_requires_auth_by_default():
+    """Ensure health check does not expose an unauthenticated agent fingerprint."""
     response = client.get("/api/agent/health")
-    assert response.status_code == 200
+    assert response.status_code == 401
 
 
 def test_docker_only_get_allowed():
     """Ensure POST/PUT methods to docker proxy are forbidden (403 or 405)."""
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     
     # POST to a whitelisted path
     response = client.post("/api/agent/docker/containers/json", headers=headers)
@@ -60,7 +60,7 @@ def test_docker_only_get_allowed():
 
 def test_docker_whitelist_only():
     """Ensure non-whitelisted paths are rejected."""
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     
     # Try to access a path not in whitelist
     response = client.get("/api/agent/docker/containers/create", headers=headers)
@@ -74,7 +74,7 @@ def test_docker_whitelist_only():
 
 def test_path_traversal_blocked():
     """Ensure stack names with path traversal characters are blocked or resolved to 404."""
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     
     # Path traversal stack name: server path normalization resolves this outside route matching -> 404
     response = client.get("/api/agent/stacks/..%2Fsubfolder", headers=headers)
@@ -87,7 +87,7 @@ def test_path_traversal_blocked():
 
 def test_invalid_stack_name_rejected():
     """Ensure stack names with invalid characters are rejected with 400."""
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.get("/api/agent/stacks/invalid$name", headers=headers)
     assert response.status_code == 400
     assert "Only lowercase letters" in response.json()["detail"]
@@ -98,7 +98,7 @@ def test_invalid_stack_name_rejected():
 
 def test_safe_stack_name():
     """Ensure a safe stack name gets processed normally (e.g. 404 if compose missing)."""
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.get("/api/agent/stacks/my-safe-stack", headers=headers)
     # my-safe-stack doesn't exist, should return 404, not 400 or 403
     assert response.status_code == 404
@@ -112,7 +112,7 @@ def test_save_stack_cleans_up_old_compose_file(stack_base):
     old_file = stack_dir / "docker-compose.yml"
     old_file.write_text("version: '3'\n")
 
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.put(
         "/api/agent/stacks/test-stack",
         headers=headers,
@@ -131,7 +131,7 @@ def test_save_stack_cleans_up_old_compose_file(stack_base):
 
 def test_save_stack_rejects_invalid_compose_file_name(stack_base):
     """Only recognized compose file names are accepted."""
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.put(
         "/api/agent/stacks/test-stack",
         headers=headers,
@@ -144,7 +144,7 @@ def test_save_stack_is_add_rejects_existing_stack(stack_base):
     """Creating a stack refuses to overwrite an existing directory."""
     stack_dir = stack_base / "test-stack"
     stack_dir.mkdir()
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.put(
         "/api/agent/stacks/test-stack",
         headers=headers,
@@ -158,7 +158,7 @@ def test_save_stack_is_add_rejects_existing_stack(stack_base):
 
 def test_save_stack_edit_rejects_missing_stack(stack_base):
     """Editing a missing stack returns 404 instead of creating it silently."""
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.put(
         "/api/agent/stacks/missing-stack",
         headers=headers,
@@ -171,7 +171,7 @@ def test_save_stack_rejects_invalid_yaml(stack_base):
     """Invalid compose YAML returns a clear validation error."""
     stack_dir = stack_base / "test-stack"
     stack_dir.mkdir()
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.put(
         "/api/agent/stacks/test-stack",
         headers=headers,
@@ -185,7 +185,7 @@ def test_save_stack_rejects_single_line_env_without_equals(stack_base):
     """.env single-line content must be KEY=value."""
     stack_dir = stack_base / "test-stack"
     stack_dir.mkdir()
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.put(
         "/api/agent/stacks/test-stack",
         headers=headers,
@@ -202,7 +202,7 @@ def test_save_stack_writes_and_removes_env(stack_base):
     """.env is written when provided and removed when omitted."""
     stack_dir = stack_base / "test-stack"
     stack_dir.mkdir()
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
 
     response = client.put(
         "/api/agent/stacks/test-stack",
@@ -231,7 +231,7 @@ def test_delete_stack_refuses_non_compose_directory(stack_base):
     stack_dir = stack_base / "test-stack"
     stack_dir.mkdir()
 
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.delete("/api/agent/stacks/test-stack", headers=headers)
     assert response.status_code == 400
     assert "does not contain a compose file" in response.json()["detail"]
@@ -254,7 +254,7 @@ def test_delete_stack_removes_directory(stack_base, monkeypatch):
 
     monkeypatch.setattr(compose_runner, "_delete_stack_after_down", fake_delete)
 
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.delete("/api/agent/stacks/test-stack", headers=headers)
     assert response.status_code == 200
     assert not stack_dir.exists()
@@ -272,7 +272,7 @@ def test_delete_stack_down_failure_preserves_directory(stack_base, monkeypatch):
 
     monkeypatch.setattr(compose_runner, "_delete_stack_after_down", fake_delete)
 
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.delete("/api/agent/stacks/test-stack", headers=headers)
     assert response.status_code == 502
     assert "down failed" in response.json()["detail"]
@@ -281,7 +281,7 @@ def test_delete_stack_down_failure_preserves_directory(stack_base, monkeypatch):
 
 def test_global_env_read_write_delete(stack_base):
     """global.env can be saved, read, and removed."""
-    headers = {"Authorization": "Bearer test-secret-token"}
+    headers = {"Authorization": "Bearer test-secret-token-0123456789abcdef"}
     response = client.get("/api/agent/global-env", headers=headers)
     assert response.status_code == 200
     assert response.json()["content"] == ""
@@ -346,7 +346,7 @@ def test_update_runs_up_only_when_compose_project_is_running(stack_base, monkeyp
     monkeypatch.setattr(compose_runner, "_get_compose_project_status", fake_status)
 
     with client.websocket_connect(
-        "/api/agent/stacks/running-stack/execute?token=test-secret-token"
+        "/api/agent/stacks/running-stack/execute?token=test-secret-token-0123456789abcdef"
     ) as ws:
         ws.send_json({"action": "update"})
         assert ws.receive_json()["type"] == "stdout"
@@ -380,7 +380,7 @@ def test_update_skips_up_when_compose_project_is_not_running(stack_base, monkeyp
     monkeypatch.setattr(compose_runner, "_get_compose_project_status", fake_status)
 
     with client.websocket_connect(
-        "/api/agent/stacks/stopped-stack/execute?token=test-secret-token"
+        "/api/agent/stacks/stopped-stack/execute?token=test-secret-token-0123456789abcdef"
     ) as ws:
         ws.send_json({"action": "update"})
         assert ws.receive_json()["type"] == "stdout"
@@ -413,7 +413,7 @@ def test_service_actions_generate_compose_args(stack_base, monkeypatch, action, 
     monkeypatch.setattr(compose_runner, "_stream_docker_command", fake_stream)
 
     with client.websocket_connect(
-        "/api/agent/stacks/test-stack/execute?token=test-secret-token"
+        "/api/agent/stacks/test-stack/execute?token=test-secret-token-0123456789abcdef"
     ) as ws:
         ws.send_json({"action": action, "service": "web"})
         assert ws.receive_json()["type"] == "stdout"
@@ -441,7 +441,7 @@ def test_update_services_generates_pull_and_no_deps_up(stack_base, monkeypatch):
     monkeypatch.setattr(compose_runner, "_get_agent_self_info", fake_self_info)
 
     with client.websocket_connect(
-        "/api/agent/stacks/test-stack/execute?token=test-secret-token"
+        "/api/agent/stacks/test-stack/execute?token=test-secret-token-0123456789abcdef"
     ) as ws:
         ws.send_json({"action": "updateServices", "services": ["web"]})
         assert ws.receive_json()["type"] == "stdout"
@@ -466,7 +466,7 @@ def test_update_services_refuses_current_agent_service(stack_base, monkeypatch):
     monkeypatch.setattr(compose_runner, "_get_agent_self_info", fake_self_info)
 
     with client.websocket_connect(
-        "/api/agent/stacks/fleetge/execute?token=test-secret-token"
+        "/api/agent/stacks/fleetge/execute?token=test-secret-token-0123456789abcdef"
     ) as ws:
         ws.send_json({"action": "updateServices", "services": ["fleetge-agent"]})
         msg = ws.receive_json()
@@ -492,7 +492,7 @@ def test_update_services_job_emits_job_id(stack_base, monkeypatch):
     monkeypatch.setattr(compose_runner, "_start_update_services_job", fake_start_job)
 
     with client.websocket_connect(
-        "/api/agent/stacks/fleetge/execute?token=test-secret-token"
+        "/api/agent/stacks/fleetge/execute?token=test-secret-token-0123456789abcdef"
     ) as ws:
         ws.send_json({"action": "updateServicesJob", "services": ["fleetge"]})
         job = ws.receive_json()
@@ -533,7 +533,7 @@ def test_compose_logs_stream_uses_compose_project_logs(stack_base, monkeypatch):
     monkeypatch.setattr(compose_runner, "_stream_with_subprocess", fake_stream)
 
     with client.websocket_connect(
-        "/api/agent/stacks/test-stack/logs?tail=42&token=test-secret-token"
+        "/api/agent/stacks/test-stack/logs?tail=42&token=test-secret-token-0123456789abcdef"
     ) as ws:
         assert ws.receive_json() == {"type": "ready"}
         assert ws.receive_json() == {"type": "stdout", "chunk": "web  | boot\n"}
@@ -549,7 +549,7 @@ def test_websocket_invalid_action(stack_base):
     (stack_dir / "compose.yaml").write_text("services:\n  app:\n    image: nginx\n")
 
     with client.websocket_connect(
-        "/api/agent/stacks/test-stack/execute?token=test-secret-token"
+        "/api/agent/stacks/test-stack/execute?token=test-secret-token-0123456789abcdef"
     ) as ws:
         ws.send_json({"action": "not-an-action"})
         msg = ws.receive_json()
@@ -557,8 +557,8 @@ def test_websocket_invalid_action(stack_base):
         assert "Invalid action" in msg["message"]
 
 
-def test_empty_agent_token_warns_on_stderr():
-    """Importing the app with an empty token prints a warning to stderr."""
+def test_empty_agent_token_exits_by_default():
+    """Importing the app with an empty token exits because auth is required by default."""
     env = os.environ.copy()
     env.pop("AGENT_TOKEN", None)
     env.pop("AGENT_REQUIRE_TOKEN", None)
@@ -569,8 +569,8 @@ def test_empty_agent_token_warns_on_stderr():
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 0
-    assert "AGENT_TOKEN is not set" in result.stderr
+    assert result.returncode == 1
+    assert "AGENT_TOKEN is required" in result.stderr
 
 
 def test_agent_require_token_empty_exits():
@@ -586,4 +586,44 @@ def test_agent_require_token_empty_exits():
         text=True,
     )
     assert result.returncode == 1
-    assert "AGENT_REQUIRE_TOKEN=true but AGENT_TOKEN is empty" in result.stderr
+    assert "AGENT_TOKEN is required" in result.stderr
+
+
+def test_short_agent_token_exits():
+    """Short tokens are refused to prevent weak public agent deployments."""
+    env = os.environ.copy()
+    env["AGENT_TOKEN"] = "short-token"
+    env.pop("AGENT_REQUIRE_TOKEN", None)
+    result = subprocess.run(
+        [sys.executable, "-c", "import main"],
+        cwd=Path(__file__).parent,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1
+    assert "AGENT_TOKEN is too short" in result.stderr
+
+
+def test_secret_path_rewrites_and_hides_unprefixed_routes():
+    """AGENT_SECRET_PATH requires the random prefix before normal agent routes."""
+    env = os.environ.copy()
+    env["AGENT_TOKEN"] = "test-secret-token-0123456789abcdef"
+    env["AGENT_SECRET_PATH"] = "/hidden-agent"
+    script = (
+        "from fastapi.testclient import TestClient; "
+        "from main import app; "
+        "c=TestClient(app); "
+        "h={'Authorization':'Bearer test-secret-token-0123456789abcdef'}; "
+        "print(c.get('/api/agent/health', headers=h).status_code); "
+        "print(c.get('/hidden-agent/api/agent/health', headers=h).status_code)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=Path(__file__).parent,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines() == ["404", "200"]

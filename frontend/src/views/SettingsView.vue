@@ -239,7 +239,7 @@
 
         <div class="mode-section">
           <el-form-item :label="t('settings.hosts.form.agentUrl')" prop="agent_url">
-            <el-input class="mono-input" v-model="hostForm.agent_url" placeholder="http://192.168.1.100:8080" />
+            <el-input class="mono-input" v-model="hostForm.agent_url" placeholder="http://your-host:8080/fleetge-random-path" />
             <div class="form-help">{{ t('settings.hosts.form.agentUrlHelp') }}</div>
           </el-form-item>
           <el-form-item :label="t('settings.hosts.form.agentToken')" prop="agent_token">
