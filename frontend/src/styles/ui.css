@@ -201,3 +201,82 @@
     flex-direction: column;
   }
 }
+
+/* ── UI Dialog styling ── */
+.ui-dialog {
+  background: var(--surface-panel) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: var(--ui-control-shadow) !important;
+}
+
+.ui-dialog .el-dialog__title {
+  color: var(--text-primary) !important;
+  font-weight: 700;
+}
+
+.ui-dialog .el-dialog__body {
+  color: var(--text-secondary) !important;
+}
+
+.ui-dialog .el-dialog__headerbtn .el-dialog__close {
+  color: var(--text-secondary) !important;
+}
+
+.ui-dialog .el-dialog__headerbtn:hover .el-dialog__close {
+  color: var(--accent-blue) !important;
+}
+
+.ui-dialog .el-divider__text {
+  background-color: var(--surface-panel) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Element Plus form overrides ── */
+.el-input-number__decrease,
+.el-input-number__increase {
+  background: var(--surface-muted) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+.el-input-number__decrease:hover,
+.el-input-number__increase:hover {
+  color: var(--accent-blue) !important;
+}
+
+.el-divider {
+  border-color: var(--border-subtle) !important;
+}
+
+.el-divider__text {
+  color: var(--text-primary) !important;
+}
+
+/* ── Select Dropdown overrides ── */
+.el-select-dropdown__item {
+  color: var(--text-secondary) !important;
+}
+
+.el-select-dropdown__item.is-hovering {
+  background-color: var(--ui-control-hover-bg) !important;
+  color: var(--accent-blue) !important;
+}
+
+.el-select-dropdown__item.is-selected {
+  color: var(--accent-blue) !important;
+  font-weight: 700;
+}
+
+/* ── Host OS Tags overrides ── */
+.ops-host-tags .el-tag {
+  background: var(--ui-control-bg) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-secondary) !important;
+}
+
+.ops-host-tags .el-tag--info {
+  background: var(--ui-control-bg) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-muted) !important;
+}

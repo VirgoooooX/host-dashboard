@@ -948,6 +948,8 @@ onUnmounted(() => {
 .view-mode-group :deep(.el-radio-button__inner) {
   background: var(--ui-control-bg) !important;
   border: 1px solid var(--border-subtle) !important;
+  border-left: none !important;
+  box-shadow: none !important;
   color: var(--text-secondary) !important;
   font-size: 12px;
   font-weight: 700;
@@ -960,6 +962,7 @@ onUnmounted(() => {
 }
 
 .view-mode-group :deep(.el-radio-button:first-child .el-radio-button__inner) {
+  border-left: 1px solid var(--border-subtle) !important;
   border-top-left-radius: var(--ui-radius-md) !important;
   border-bottom-left-radius: var(--ui-radius-md) !important;
 }
@@ -979,7 +982,11 @@ onUnmounted(() => {
   background: var(--accent-blue) !important;
   border-color: var(--accent-blue) !important;
   color: #ffffff !important;
-  box-shadow: var(--ui-control-shadow) !important;
+  box-shadow: -1px 0 0 0 var(--accent-blue) !important;
+}
+
+.view-mode-group :deep(.el-radio-button:first-child .el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  box-shadow: none !important;
 }
 
 /* Filters and Chips */

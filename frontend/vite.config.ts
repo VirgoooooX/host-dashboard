@@ -2,6 +2,11 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
+import fs from "node:fs";
+
+const packageJson = JSON.parse(
+  fs.readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+) as { version?: string };
 
 export default defineConfig({
   plugins: [
@@ -47,6 +52,9 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "src"),
     },
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(packageJson.version || "0.0.0"),
   },
   server: {
     port: 5173,

@@ -27,25 +27,48 @@
             {{ item.badge }}
           </span>
         </button>
-      </nav>
 
-      <div class="ops-host-list">
-        <div class="ops-section-label">{{ t('nav.hostsSection') }}</div>
-        <button
-          v-for="host in store.hosts"
-          :key="host.host_id"
-          class="ops-host-link"
-          :class="{ active: route.params.hostId === host.host_id }"
-          type="button"
-          @click="router.push(`/hosts/${host.host_id}`)"
-        >
-          <StatusIcon :status="host.status" />
-          <span class="ops-host-name">{{ host.display_name }}</span>
-          <span v-if="store.getHostUpdateCount(host.host_id) > 0" class="ops-host-update">
-            {{ store.getHostUpdateCount(host.host_id) }}
-          </span>
-        </button>
-      </div>
+        <!-- 主机管理一级标题与二级列表组 -->
+        <div class="ops-nav-group">
+          <div class="ops-nav-header">
+            <button
+              class="ops-nav-item"
+              :class="{ active: route.name === 'settings' && route.query.section === 'hosts' }"
+              type="button"
+              @click="router.push({ name: 'settings', query: { section: 'hosts' } })"
+            >
+              <el-icon><Server /></el-icon>
+              <span>{{ t('nav.hosts') }}</span>
+            </button>
+            <button
+              class="ops-nav-add-btn"
+              type="button"
+              :title="t('settings.hosts.add')"
+              @click.stop="router.push({ name: 'settings', query: { section: 'hosts', action: 'add-host' } })"
+            >
+              <el-icon><Plus /></el-icon>
+            </button>
+          </div>
+
+          <!-- 二级子列表 -->
+          <div class="ops-nav-submenu">
+            <button
+              v-for="host in store.hosts"
+              :key="host.host_id"
+              class="ops-host-link"
+              :class="{ active: route.params.hostId === host.host_id }"
+              type="button"
+              @click="router.push(`/hosts/${host.host_id}`)"
+            >
+              <StatusIcon :status="host.status" />
+              <span class="ops-host-name">{{ host.display_name }}</span>
+              <span v-if="store.getHostUpdateCount(host.host_id) > 0" class="ops-host-update">
+                {{ store.getHostUpdateCount(host.host_id) }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </nav>
 
       <div class="ops-sidebar-footer">
         <button class="ops-sidebar-footer-btn ops-sidebar-mobile-action" type="button" @click="switchLocale">
@@ -171,6 +194,8 @@ import {
   Settings,
   Globe,
   Grid,
+  Plus,
+  Server,
 } from "@lucide/vue";
 import AppLogo from "@/components/AppLogo.vue";
 import StatusIcon from "@/components/StatusIcon.vue";
@@ -341,11 +366,13 @@ function logout() {
   text-transform: uppercase;
 }
 
-.ops-nav,
-.ops-host-list {
+.ops-nav {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .ops-nav-item,
@@ -432,10 +459,51 @@ function logout() {
   color: var(--danger);
 }
 
-.ops-host-list {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+.ops-nav-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.ops-nav-header {
+  position: relative;
+}
+
+.ops-nav-header .ops-nav-item {
+  padding-right: 38px;
+}
+
+.ops-nav-add-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: all 160ms ease;
+  z-index: 2;
+}
+
+.ops-nav-add-btn:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+}
+
+.ops-nav-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  padding-left: 20px;
 }
 
 .ops-section-label {

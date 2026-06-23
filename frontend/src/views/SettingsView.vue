@@ -728,7 +728,7 @@ const store = useSettingsStore();
 const dashboardStore = useDashboardStore();
 const { confirm, alert: confirmAlert } = useConfirm();
 const { isMobile } = useMobile();
-const appVersion = "0.6.3";
+const appVersion = __APP_VERSION__;
 
 const activeSection = ref<SettingsSectionId>("params");
 const validSections: SettingsSectionId[] = ["params", "hosts", "maintenance", "audit", "about"];
@@ -793,16 +793,7 @@ const resourceLinks = computed(() => [
   },
 ]);
 
-watch(
-  () => route.query.section,
-  (value) => {
-    const raw = Array.isArray(value) ? value[0] : value;
-    if (raw && validSections.includes(raw as SettingsSectionId)) {
-      activeSection.value = raw as SettingsSectionId;
-    }
-  },
-  { immediate: true },
-);
+
 
 function setSection(section: SettingsSectionId) {
   activeSection.value = section;
@@ -1494,6 +1485,22 @@ function openAuditDrawer(row: AuditEntry) {
   selectedAuditLog.value = row;
   auditDrawerVisible.value = true;
 }
+
+watch(
+  () => route.query,
+  (query) => {
+    const section = Array.isArray(query.section) ? query.section[0] : query.section;
+    if (section && validSections.includes(section as SettingsSectionId)) {
+      activeSection.value = section as SettingsSectionId;
+    }
+    const action = Array.isArray(query.action) ? query.action[0] : query.action;
+    if (action === "add-host") {
+      openCreateHostDialog();
+      void router.replace({ name: "settings", query: { section: "hosts" } });
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   void loadSettings();
