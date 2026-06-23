@@ -1,127 +1,158 @@
 <template>
   <div class="settings-layout">
-    <header class="ui-page-header">
-      <div>
-        <div class="ui-section-kicker">{{ t('settings.kicker') }}</div>
-        <h2 class="ui-page-title">{{ t('settings.title') }}</h2>
-      </div>
-      <el-button class="ui-button ui-button--muted" @click="$router.push('/')">
-        <el-icon><ArrowLeft /></el-icon> {{ t('settings.back') }}
-      </el-button>
-    </header>
+    <nav class="settings-tabs" aria-label="Settings sections" role="tablist">
+      <button
+        v-for="section in settingSections"
+        :key="section.id"
+        type="button"
+        class="settings-tab"
+        :class="{ active: activeSection === section.id }"
+        :aria-selected="activeSection === section.id"
+        role="tab"
+        @click="setSection(section.id)"
+      >
+        <el-icon><component :is="section.icon" /></el-icon>
+        <span>{{ section.label }}</span>
+      </button>
+    </nav>
 
-    <div class="ui-panel settings-panel">
-      <el-tabs v-model="activeTab" type="card" class="settings-tabs">
-        <!-- Tab 1: Running parameters -->
-        <el-tab-pane name="params" :label="t('settings.tab.params')">
-          <div class="tab-pane-content" v-loading="store.loading">
-            <el-alert
-              :title="t('settings.params.alert')"
-              type="info"
-              show-icon
-              :closable="false"
-              class="tab-alert"
-            />
-            
-            <el-form :model="paramsForm" label-position="top" class="ui-form" ref="paramsFormRef" :rules="paramsRules">
-              <div class="form-grid">
-                <el-form-item :label="t('settings.params.dockerPoll')" prop="DOCKER_POLL_INTERVAL">
+    <div class="settings-workspace">
+      <main class="settings-main">
+        <section v-if="activeSection === 'params'" class="settings-section" v-loading="store.loading">
+          <div class="section-heading">
+            <div>
+              <h3>{{ t("settings.sections.params") }}</h3>
+              <p>{{ t("settings.params.alert") }}</p>
+            </div>
+            <el-button
+              type="primary"
+              class="ui-button ui-button--primary"
+              :loading="store.saving"
+              @click="handleSaveParams"
+            >
+              {{ t("settings.params.save") }}
+            </el-button>
+          </div>
+
+          <el-form
+            ref="paramsFormRef"
+            :model="paramsForm"
+            label-position="top"
+            class="settings-form params-settings-form"
+            :rules="paramsRules"
+          >
+            <div class="form-cluster">
+              <div class="cluster-title">{{ t("settings.params.group.runtime") }}</div>
+              <div class="settings-field-list">
+                <el-form-item prop="DOCKER_POLL_INTERVAL" class="settings-field-row">
+                  <template #label>
+                    <span class="settings-field-label">{{ t("settings.params.dockerPoll") }}</span>
+                    <span class="settings-field-help">{{ t("settings.params.help.dockerPoll") }}</span>
+                  </template>
                   <div class="input-with-unit">
                     <el-input-number v-model="paramsForm.DOCKER_POLL_INTERVAL" :min="5" :max="300" :step="5" />
-                    <span class="unit-text">{{ t('settings.params.unit.seconds') }}</span>
+                    <span class="unit-text">{{ t("settings.params.unit.seconds") }}</span>
                   </div>
-                  <div class="form-help">{{ t('settings.params.help.dockerPoll') }}</div>
                 </el-form-item>
 
-                <el-form-item :label="t('settings.params.metricsStream')" prop="METRICS_STREAM_INTERVAL">
+                <el-form-item prop="METRICS_STREAM_INTERVAL" class="settings-field-row">
+                  <template #label>
+                    <span class="settings-field-label">{{ t("settings.params.metricsStream") }}</span>
+                    <span class="settings-field-help">{{ t("settings.params.help.metricsStream") }}</span>
+                  </template>
                   <div class="input-with-unit">
                     <el-input-number v-model="paramsForm.METRICS_STREAM_INTERVAL" :min="0.5" :max="10" :step="0.5" />
-                    <span class="unit-text">{{ t('settings.params.unit.seconds') }}</span>
+                    <span class="unit-text">{{ t("settings.params.unit.seconds") }}</span>
                   </div>
-                  <div class="form-help">{{ t('settings.params.help.metricsStream') }}</div>
                 </el-form-item>
 
-                <el-form-item :label="t('settings.params.structureRefresh')" prop="BACKGROUND_STRUCTURE_REFRESH_INTERVAL">
+                <el-form-item prop="BACKGROUND_STRUCTURE_REFRESH_INTERVAL" class="settings-field-row">
+                  <template #label>
+                    <span class="settings-field-label">{{ t("settings.params.structureRefresh") }}</span>
+                    <span class="settings-field-help">{{ t("settings.params.help.structureRefresh") }}</span>
+                  </template>
                   <div class="input-with-unit">
                     <el-input-number v-model="paramsForm.BACKGROUND_STRUCTURE_REFRESH_INTERVAL" :min="60" :max="86400" :step="60" />
-                    <span class="unit-text">{{ t('settings.params.unit.seconds') }}</span>
+                    <span class="unit-text">{{ t("settings.params.unit.seconds") }}</span>
                   </div>
-                  <div class="form-help">{{ t('settings.params.help.structureRefresh') }}</div>
                 </el-form-item>
 
-                <el-form-item :label="t('settings.params.updateCheck')" prop="UPDATE_CHECK_INTERVAL">
+                <el-form-item prop="UPDATE_CHECK_INTERVAL" class="settings-field-row">
+                  <template #label>
+                    <span class="settings-field-label">{{ t("settings.params.updateCheck") }}</span>
+                    <span class="settings-field-help">{{ t("settings.params.help.updateCheck") }}</span>
+                  </template>
                   <div class="input-with-unit">
                     <el-input-number v-model="paramsForm.UPDATE_CHECK_INTERVAL" :min="3600" :max="172800" :step="3600" />
-                    <span class="unit-text">{{ t('settings.params.unit.seconds') }}</span>
+                    <span class="unit-text">{{ t("settings.params.unit.seconds") }}</span>
                   </div>
-                  <div class="form-help">{{ t('settings.params.help.updateCheck') }}</div>
-                </el-form-item>
-
-                <el-form-item :label="t('settings.params.adminUsername')" prop="ADMIN_USERNAME">
-                  <el-input v-model="paramsForm.ADMIN_USERNAME" placeholder="admin" minlength="3" />
-                  <div class="form-help">{{ t('settings.params.help.adminUsername') }}</div>
-                </el-form-item>
-
-                <el-form-item :label="t('settings.params.jwtExpire')" prop="JWT_EXPIRE_HOURS">
-                  <div class="input-with-unit">
-                    <el-input-number v-model="paramsForm.JWT_EXPIRE_HOURS" :min="1" :max="720" :step="1" />
-                    <span class="unit-text">{{ t('settings.params.unit.hours') }}</span>
-                  </div>
-                  <div class="form-help">{{ t('settings.params.help.jwtExpire') }}</div>
                 </el-form-item>
               </div>
+            </div>
 
-              <el-form-item class="form-actions-row">
-                <el-button type="primary" class="ui-button" :loading="store.saving" @click="handleSaveParams">
-                  {{ t('settings.params.save') }}
-                </el-button>
-              </el-form-item>
-            </el-form>
-          </div>
-        </el-tab-pane>
+            <div class="form-cluster">
+              <div class="cluster-title">{{ t("settings.params.group.account") }}</div>
+              <div class="settings-field-list">
+                <el-form-item prop="ADMIN_USERNAME" class="settings-field-row">
+                  <template #label>
+                    <span class="settings-field-label">{{ t("settings.params.adminUsername") }}</span>
+                    <span class="settings-field-help">{{ t("settings.params.help.adminUsername") }}</span>
+                  </template>
+                  <el-input v-model="paramsForm.ADMIN_USERNAME" placeholder="admin" minlength="3" />
+                </el-form-item>
 
-        <!-- Tab 2: Security & Credentials -->
-        <el-tab-pane name="security" :label="t('settings.tab.security')">
-          <div class="tab-pane-content" v-loading="store.loading">
-            <el-alert
-              :title="t('settings.security.alert')"
-              type="warning"
-              show-icon
-              :closable="false"
-              class="tab-alert"
-            />
+                <el-form-item prop="JWT_EXPIRE_HOURS" class="settings-field-row">
+                  <template #label>
+                    <span class="settings-field-label">{{ t("settings.params.jwtExpire") }}</span>
+                    <span class="settings-field-help">{{ t("settings.params.help.jwtExpire") }}</span>
+                  </template>
+                  <div class="input-with-unit">
+                    <el-input-number v-model="paramsForm.JWT_EXPIRE_HOURS" :min="1" :max="720" :step="1" />
+                    <span class="unit-text">{{ t("settings.params.unit.hours") }}</span>
+                  </div>
+                </el-form-item>
+              </div>
+            </div>
+          </el-form>
 
-            <el-form label-position="top" class="ui-form">
+          <details class="settings-inline-details">
+            <summary>
+              <span>{{ t("settings.sections.security") }}</span>
+              <small>{{ t("settings.security.alert") }}</small>
+            </summary>
+            <el-form label-position="top" class="settings-form inline-security-form">
               <div class="form-grid">
                 <el-form-item :label="t('settings.security.jwtSecret')">
                   <el-input class="mono-input" v-model="readonlyForm.JWT_SECRET" disabled show-password />
-                  <div class="form-help">{{ t('settings.security.help.jwtSecret') }}</div>
+                  <div class="form-help">{{ t("settings.security.help.jwtSecret") }}</div>
                 </el-form-item>
 
                 <el-form-item :label="t('settings.security.credentialsKey')">
                   <el-input class="mono-input" v-model="readonlyForm.CREDENTIALS_KEY" disabled show-password />
-                  <div class="form-help">{{ t('settings.security.help.credentialsKey') }}</div>
+                  <div class="form-help">{{ t("settings.security.help.credentialsKey") }}</div>
                 </el-form-item>
 
                 <el-form-item :label="t('settings.security.adminPassword')">
                   <el-input class="mono-input" v-model="readonlyForm.ADMIN_PASSWORD" disabled show-password />
-                  <div class="form-help">{{ t('settings.security.help.adminPassword') }}</div>
+                  <div class="form-help">{{ t("settings.security.help.adminPassword") }}</div>
                 </el-form-item>
               </div>
             </el-form>
-          </div>
-        </el-tab-pane>
+          </details>
+        </section>
 
-        <!-- Tab 3: Host Node Management -->
-        <el-tab-pane name="hosts" :label="t('settings.tab.hosts')">
-          <div class="tab-pane-content" v-loading="store.loading">
-            <div class="pane-header-actions">
-              <div class="pane-header-kicker">{{ t('settings.hosts.count', { count: store.hosts.length }) }}</div>
-              <el-button type="primary" class="ui-button ui-button--compact" :icon="Plus" @click="openCreateHostDialog">
-                {{ t('settings.hosts.add') }}
-              </el-button>
+        <section v-if="activeSection === 'hosts'" class="settings-section" v-loading="store.loading">
+          <div class="section-heading">
+            <div>
+              <h3>{{ t("settings.sections.hosts") }}</h3>
+              <p>{{ t("settings.hosts.count", { count: store.hosts.length }) }}</p>
             </div>
+            <el-button type="primary" class="ui-button ui-button--primary" :icon="Plus" @click="openCreateHostDialog">
+              {{ t("settings.hosts.add") }}
+            </el-button>
+          </div>
 
+          <div class="table-frame">
             <el-table :data="store.hosts" stripe style="width: 100%" class="host-table">
               <el-table-column :label="t('settings.hosts.col.sort')" prop="sort_order" width="70" align="center" class-name="mobile-hidden" label-class-name="mobile-hidden" />
               <el-table-column :label="t('settings.hosts.col.id')" prop="host_id" width="140" class-name="mobile-hidden" label-class-name="mobile-hidden">
@@ -129,81 +160,259 @@
                   <span class="host-code-text">{{ row.host_id }}</span>
                 </template>
               </el-table-column>
-              <el-table-column :label="t('settings.hosts.col.name')" prop="display_name" width="160" />
-              <el-table-column :label="t('settings.hosts.col.url')" min-width="200" prop="agent_url" class-name="mobile-hidden" label-class-name="mobile-hidden">
+              <el-table-column :label="t('settings.hosts.col.name')" prop="display_name" width="170" />
+              <el-table-column :label="t('settings.hosts.col.url')" min-width="220" prop="agent_url" class-name="mobile-hidden" label-class-name="mobile-hidden">
                 <template #default="{ row }">
                   <span class="host-code-text">{{ row.agent_url || "-" }}</span>
                 </template>
               </el-table-column>
               <el-table-column :label="t('settings.hosts.col.status')" prop="enabled" width="90" align="center">
                 <template #default="{ row }">
-                  <el-switch v-slot:default v-model="row.enabled" @change="toggleHostEnabled(row)" :loading="store.saving" />
+                  <el-switch v-model="row.enabled" @change="toggleHostEnabled(row)" :loading="store.saving" />
                 </template>
               </el-table-column>
-              <el-table-column :label="t('settings.hosts.col.appProfiles')" width="130" align="center" class-name="mobile-hidden" label-class-name="mobile-hidden">
+              <el-table-column
+                :label="t('settings.hosts.col.appProfiles')"
+                width="96"
+                align="center"
+                class-name="mobile-hidden app-profiles-column"
+                label-class-name="mobile-hidden"
+                :fixed="isMobile ? false : 'right'"
+              >
                 <template #default="{ row }">
-                  <div class="icons-cell">
-                    <div class="icons-preview-strip" v-if="row.app_profiles && row.app_profiles.length > 0">
-                      <el-tooltip
-                        v-for="(p, idx) in row.app_profiles.slice(0, 3)"
-                        :key="idx"
-                        :content="p.title || p.stack_pattern"
-                        placement="top"
-                      >
-                        <el-image
-                          v-if="p.icon_value"
-                          :src="getIconUrl(p.icon_value)"
-                          class="icon-strip-thumb"
-                          fit="contain"
-                        >
-                          <template #error>
-                            <el-icon class="icon-strip-placeholder"><Picture /></el-icon>
-                          </template>
-                        </el-image>
-                        <div v-else class="icon-strip-thumb">
-                          <el-icon class="icon-strip-placeholder"><Picture /></el-icon>
-                        </div>
-                      </el-tooltip>
-                      <span
-                        v-if="row.app_profiles.length > 3"
-                        class="icons-more-chip"
-                      >+{{ row.app_profiles.length - 3 }}</span>
-                    </div>
-                    <span v-else class="icons-empty">—</span>
-                    <el-tooltip :content="t('settings.hosts.col.manageAppProfiles')" placement="top">
-                      <el-button
-                        size="small"
-                        :icon="SettingIcon"
-                        circle
-                        class="icons-manage-btn"
+                  <div class="app-profiles-cell">
+                    <el-tooltip :content="t('settings.hosts.col.manageAppProfiles')" placement="top" :show-after="250">
+                      <button
+                        type="button"
+                        class="app-profile-settings-btn"
+                        :aria-label="t('settings.hosts.col.manageAppProfiles')"
                         @click="openAppProfilesDialog(row)"
-                      />
+                      >
+                        <el-icon><SettingIcon /></el-icon>
+                        <span>{{ t("settings.hosts.col.appProfilesSetup") }}</span>
+                      </button>
                     </el-tooltip>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column :label="t('settings.hosts.col.actions')" :width="isMobile ? 160 : 280" align="center" :fixed="isMobile ? false : 'right'">
+              <el-table-column :label="t('settings.hosts.col.actions')" :width="isMobile ? 150 : 224" align="center" :fixed="isMobile ? false : 'right'">
                 <template #default="{ row }">
                   <div class="row-operations">
-                    <el-button size="small" type="success" plain @click="testHostConnection(row)">
+                    <el-button size="small" type="success" plain class="host-action-btn host-action-test" @click="testHostConnection(row)">
                       <el-icon v-if="isMobile"><Link /></el-icon>
-                      <span v-else>{{ t('settings.hosts.action.test') }}</span>
+                      <span v-else>{{ t("settings.hosts.action.test") }}</span>
                     </el-button>
                     <el-tooltip :content="t('settings.globalEnv.manage')" placement="top">
-                      <el-button size="small" type="info" plain :icon="Document" @click="openGlobalEnvDialog(row)" />
+                      <el-button size="small" type="info" plain :icon="Document" class="host-action-btn host-icon-btn" @click="openGlobalEnvDialog(row)" />
                     </el-tooltip>
-                    <el-button size="small" type="info" plain :icon="Edit" @click="openEditHostDialog(row)" />
-                    <el-button size="small" type="danger" plain :icon="Delete" @click="confirmDeleteHost(row)" />
+                    <el-button size="small" type="info" plain :icon="Edit" class="host-action-btn host-icon-btn" @click="openEditHostDialog(row)" />
+                    <el-button size="small" type="danger" plain :icon="Delete" class="host-action-btn host-icon-btn" @click="confirmDeleteHost(row)" />
                   </div>
                 </template>
               </el-table-column>
             </el-table>
           </div>
-        </el-tab-pane>
-      </el-tabs>
+        </section>
+
+        <section v-if="activeSection === 'maintenance'" class="settings-section">
+          <div class="section-heading">
+            <div>
+              <h3>{{ t("settings.sections.maintenance") }}</h3>
+              <p>{{ t("settings.maintenance.description") }}</p>
+            </div>
+            <div class="section-actions">
+              <el-button class="ui-button ui-button--muted" @click="setSection('params')">
+                {{ t("settings.maintenance.editInterval") }}
+              </el-button>
+              <el-button
+                type="primary"
+                class="ui-button ui-button--primary"
+                :loading="checkingUpdates"
+                @click="runMaintenanceCheck"
+              >
+                <el-icon><RefreshCw /></el-icon>
+                {{ t("updates.checkNow") }}
+              </el-button>
+            </div>
+          </div>
+
+          <el-alert
+            v-if="dashboardStore.updateCheckRunning"
+            :title="t('updates.runningTitle')"
+            :description="t('updates.runningDesc')"
+            type="info"
+            show-icon
+            :closable="false"
+            class="section-alert"
+          />
+
+          <div class="table-toolbar">
+            <el-input
+              v-model="updateSearch"
+              class="toolbar-input"
+              :placeholder="t('settings.maintenance.searchPlaceholder')"
+              clearable
+              :prefix-icon="Search"
+            />
+            <el-select v-model="updateStatusFilter" class="toolbar-select" :placeholder="t('updates.status')">
+              <el-option :label="t('apps.chip.all')" value="" />
+              <el-option :label="t('update.status.updatable')" value="updatable" />
+              <el-option :label="t('update.status.needsAuth')" value="needs_auth" />
+              <el-option :label="t('update.status.rateLimited')" value="rate_limited" />
+              <el-option :label="t('update.status.checkFailed')" value="check_failed" />
+              <el-option :label="t('update.status.upToDate')" value="up_to_date" />
+            </el-select>
+            <el-button class="ui-button ui-button--muted" @click="openUpdatableApps">
+              {{ t("settings.maintenance.openApps") }}
+            </el-button>
+          </div>
+
+          <div class="table-frame" v-if="filteredUpdateResults.length > 0">
+            <el-table :data="filteredUpdateResults" stripe style="width: 100%" v-loading="checkingUpdates">
+              <el-table-column :label="t('updates.host')" prop="host_id" width="120">
+                <template #default="{ row }">
+                  <span class="host-code-text">{{ row.host_id }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column :label="t('updates.image')" prop="image" min-width="300">
+                <template #default="{ row }">
+                  <code class="image-ref">{{ row.image }}</code>
+                </template>
+              </el-table-column>
+              <el-table-column :label="t('updates.status')" width="130">
+                <template #default="{ row }">
+                  <UpdateBadge :status="displayStatus(row)" />
+                </template>
+              </el-table-column>
+              <el-table-column :label="t('updates.currentDigest')" prop="current_digest" min-width="190" class-name="mobile-hidden" label-class-name="mobile-hidden">
+                <template #default="{ row }">
+                  <span class="digest-text">{{ shortenDigest(row.current_digest) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column :label="t('updates.registryDigest')" prop="registry_digest" min-width="190" class-name="mobile-hidden" label-class-name="mobile-hidden">
+                <template #default="{ row }">
+                  <span class="digest-text">{{ shortenDigest(row.registry_digest) }}</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+          <el-empty v-else :description="t('updates.noResults')" />
+        </section>
+
+        <section v-if="activeSection === 'audit'" class="settings-section">
+          <div class="section-heading">
+            <div>
+              <h3>{{ t("settings.sections.audit") }}</h3>
+              <p>{{ t("settings.audit.description") }}</p>
+            </div>
+            <el-button class="ui-button ui-button--muted" :loading="auditLoading" @click="fetchLogs">
+              <el-icon><RefreshCw /></el-icon>
+              {{ t("shell.refresh") }}
+            </el-button>
+          </div>
+
+          <div class="table-toolbar">
+            <el-input
+              v-model="auditSearch"
+              class="toolbar-input"
+              :placeholder="t('settings.audit.searchPlaceholder')"
+              clearable
+              :prefix-icon="Search"
+            />
+            <el-select v-model="auditResultFilter" class="toolbar-select" :placeholder="t('audit.result')">
+              <el-option :label="t('apps.chip.all')" value="" />
+              <el-option :label="t('audit.success')" value="success" />
+              <el-option :label="t('audit.failure')" value="failure" />
+            </el-select>
+            <el-select v-model="auditActionFilter" class="toolbar-select wide" :placeholder="t('audit.action')" clearable>
+              <el-option :label="t('apps.chip.all')" value="" />
+              <el-option
+                v-for="action in auditActions"
+                :key="action.value"
+                :label="action.label"
+                :value="action.value"
+              />
+            </el-select>
+          </div>
+
+          <div class="table-frame" v-if="filteredAuditLogs.length > 0">
+            <el-table
+              :data="filteredAuditLogs"
+              stripe
+              style="width: 100%"
+              :default-sort="{ prop: 'timestamp', order: 'descending' }"
+              v-loading="auditLoading"
+              row-class-name="audit-row"
+              @row-click="openAuditDrawer"
+            >
+              <el-table-column :label="t('audit.time')" prop="timestamp" width="170" sortable>
+                <template #default="{ row }">
+                  <span class="audit-time">{{ formatTime(row.timestamp) }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column :label="t('audit.user')" prop="user" width="100" />
+              <el-table-column :label="t('audit.action')" prop="action" width="150">
+                <template #default="{ row }">
+                  <el-tag :type="actionType(row.action)" size="small">{{ actionLabel(row.action) }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column :label="t('audit.host')" prop="host_id" width="120" class-name="mobile-hidden" label-class-name="mobile-hidden">
+                <template #default="{ row }">
+                  <span class="audit-code">{{ row.host_id || "-" }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column :label="t('audit.result')" prop="result" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="row.result === 'success' ? 'success' : 'danger'" size="small">
+                    {{ row.result === "success" ? t("audit.success") : t("audit.failure") }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column :label="t('audit.detail')" prop="detail" min-width="240">
+                <template #default="{ row }">
+                  <span class="detail-text">{{ row.detail || "-" }}</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+          <el-empty v-else :description="t('audit.noRecords')" />
+        </section>
+
+        <section v-if="activeSection === 'about'" class="settings-section">
+          <div class="section-heading">
+            <div>
+              <h3>{{ t("settings.sections.about") }}</h3>
+              <p>{{ t("settings.about.description") }}</p>
+            </div>
+          </div>
+
+          <div class="about-panel">
+            <div class="about-version-row">
+              <span>{{ t("settings.about.version") }}</span>
+              <strong>v{{ appVersion }}</strong>
+            </div>
+            <div class="about-link-list">
+              <a
+                v-for="link in resourceLinks"
+                :key="link.href"
+                class="about-link-row"
+                :href="link.href"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                <el-icon><component :is="link.icon" /></el-icon>
+                <span>
+                  <strong>{{ link.label }}</strong>
+                  <small>{{ link.description }}</small>
+                </span>
+              </a>
+            </div>
+          </div>
+        </section>
+
+      </main>
     </div>
 
-    <!-- Host Create / Edit Dialog -->
     <el-dialog
       v-model="hostDialogVisible"
       :title="hostFormMode === 'create' ? t('settings.hosts.create') : t('settings.hosts.edit')"
@@ -235,12 +444,12 @@
           </el-form-item>
         </div>
 
-        <el-divider>{{ t('settings.hosts.form.connection') }}</el-divider>
+        <el-divider>{{ t("settings.hosts.form.connection") }}</el-divider>
 
         <div class="mode-section">
           <el-form-item :label="t('settings.hosts.form.agentUrl')" prop="agent_url">
             <el-input class="mono-input" v-model="hostForm.agent_url" placeholder="http://your-host:8080/fleetge-random-path" />
-            <div class="form-help">{{ t('settings.hosts.form.agentUrlHelp') }}</div>
+            <div class="form-help">{{ t("settings.hosts.form.agentUrlHelp") }}</div>
           </el-form-item>
           <el-form-item :label="t('settings.hosts.form.agentToken')" prop="agent_token">
             <el-input
@@ -255,16 +464,15 @@
 
         <div class="dialog-actions-row">
           <el-button type="success" plain @click="testFormConnection" :loading="testConnectionLoading">
-            {{ t('settings.hosts.action.test') }}
+            {{ t("settings.hosts.action.test") }}
           </el-button>
           <div class="spacer"></div>
-          <el-button @click="closeHostDialog">{{ t('compose.cancel') }}</el-button>
-          <el-button type="primary" @click="saveHostForm">{{ t('compose.saveAction') }}</el-button>
+          <el-button @click="closeHostDialog">{{ t("compose.cancel") }}</el-button>
+          <el-button type="primary" @click="saveHostForm">{{ t("compose.saveAction") }}</el-button>
         </div>
       </el-form>
     </el-dialog>
 
-    <!-- App Profiles Management Dialog -->
     <el-dialog
       v-model="appProfilesDialogVisible"
       :title="t('settings.appProfiles.title', { name: selectedHost?.display_name })"
@@ -273,8 +481,8 @@
     >
       <div class="icons-dialog-body" v-loading="appProfilesLoading">
         <div class="current-icons-section">
-          <div class="section-kicker">{{ t('settings.appProfiles.existing') }}</div>
-          <el-table :data="appProfilesList" stripe size="small" class="icons-table" max-height="300px">
+          <div class="section-kicker">{{ t("settings.appProfiles.existing") }}</div>
+          <el-table :data="appProfilesList" stripe size="small" class="icons-table" :max-height="appProfilesTableMaxHeight">
             <el-table-column :label="t('settings.appProfiles.col.pattern')" prop="stack_pattern" width="130">
               <template #default="{ row }">
                 <code class="pattern-code">{{ row.stack_pattern }}</code>
@@ -290,31 +498,38 @@
                 <span class="url-text font-mono">{{ row.app_url || "-" }}</span>
               </template>
             </el-table-column>
-            <el-table-column :label="t('settings.appProfiles.col.group')" prop="group" width="100">
+            <el-table-column :label="t('settings.appProfiles.col.group')" prop="group" width="110" align="center">
               <template #default="{ row }">
-                <el-tag v-if="row.group" size="small">{{ row.group }}</el-tag>
-                <span v-else>-</span>
+                <div class="app-profile-group-cell">
+                  <el-tag v-if="row.group" size="small">{{ row.group }}</el-tag>
+                  <span v-else>-</span>
+                </div>
               </template>
             </el-table-column>
             <el-table-column :label="t('settings.appProfiles.col.icon')" width="80" align="center">
               <template #default="{ row }">
-                <el-image v-if="row.icon_value" :src="getIconUrl(row.icon_value)" class="icon-preview-cell" fit="contain">
-                  <template #error>
-                    <el-icon class="icon-placeholder-cell"><Picture /></el-icon>
-                  </template>
-                </el-image>
-                <span v-else>-</span>
+                <div class="app-profile-icon-cell">
+                  <el-image v-if="getAppProfileIconValue(row)" :src="getIconUrl(getAppProfileIconValue(row))" class="icon-preview-cell" fit="contain">
+                    <template #error>
+                      <el-icon class="icon-placeholder-cell"><Picture /></el-icon>
+                    </template>
+                  </el-image>
+                  <span v-else>-</span>
+                </div>
               </template>
             </el-table-column>
-            <el-table-column :label="t('settings.appProfiles.col.actions')" width="80" align="center">
-              <template #default="{ $index }">
-                <el-button size="small" type="danger" :icon="Delete" circle @click="removeAppProfile($index)" />
+            <el-table-column :label="t('settings.appProfiles.col.actions')" width="98" align="center">
+              <template #default="{ row, $index }">
+                <div class="app-profile-row-actions">
+                  <el-button size="small" type="info" plain :icon="Edit" @click="editAppProfile(row, $index)" />
+                  <el-button size="small" type="danger" plain :icon="Delete" @click="removeAppProfile($index)" />
+                </div>
               </template>
             </el-table-column>
           </el-table>
         </div>
 
-        <el-divider>{{ t('settings.appProfiles.addNew') }}</el-divider>
+        <el-divider class="compact-divider">{{ t("settings.appProfiles.addNew") }}</el-divider>
 
         <el-form :model="appProfileForm" label-position="top" class="add-icon-form" ref="appProfileFormRef" :rules="appProfileRules">
           <div class="icon-form-grid">
@@ -337,24 +552,22 @@
 
             <el-form-item :label="t('settings.appProfiles.form.source')">
               <el-radio-group v-model="appProfileForm.sourceType" size="small">
-                <el-radio-button label="none">{{ t('apps.chip.all') }} (None)</el-radio-button>
-                <el-radio-button label="url">{{ t('settings.appProfiles.form.remoteUrl') }}</el-radio-button>
-                <el-radio-button label="local">{{ t('settings.appProfiles.form.localFile') }}</el-radio-button>
+                <el-radio-button label="none">{{ t("apps.chip.all") }} (None)</el-radio-button>
+                <el-radio-button label="url">{{ t("settings.appProfiles.form.remoteUrl") }}</el-radio-button>
+                <el-radio-button label="local">{{ t("settings.appProfiles.form.localFile") }}</el-radio-button>
               </el-radio-group>
             </el-form-item>
 
-            <!-- URL Source -->
             <el-form-item v-if="appProfileForm.sourceType === 'url'" :label="t('settings.appProfiles.form.remoteUrl')" prop="icon_url">
               <el-input v-model="appProfileForm.icon_url" placeholder="https://cdn.jsdelivr.net/.../logo.svg" />
             </el-form-item>
 
-            <!-- Local Source -->
             <el-form-item v-else-if="appProfileForm.sourceType === 'local'" :label="t('settings.appProfiles.form.localFile')" prop="icon_file">
               <div class="local-file-picker">
                 <el-select v-model="appProfileForm.icon_file" :placeholder="t('settings.appProfiles.form.localPlaceholder')" class="file-select">
                   <el-option v-for="file in availableFiles" :key="file" :label="file" :value="file" />
                 </el-select>
-                
+
                 <el-upload
                   action="#"
                   :auto-upload="false"
@@ -362,15 +575,18 @@
                   :on-change="handleIconFileSelected"
                   class="upload-trigger"
                 >
-                  <el-button type="info" :icon="Upload" class="ui-button ui-button--muted">{{ t('settings.appProfiles.form.upload') }}</el-button>
+                  <el-button type="info" :icon="Upload" class="ui-button ui-button--muted">{{ t("settings.appProfiles.form.upload") }}</el-button>
                 </el-upload>
               </div>
             </el-form-item>
           </div>
 
           <div class="icon-form-action">
+            <el-button v-if="editingAppProfileIndex !== null" class="ui-button ui-button--muted" @click="resetAppProfileForm">
+              {{ t("compose.cancel") }}
+            </el-button>
             <el-button type="primary" class="ui-button ui-button--compact" @click="addAppProfile">
-              {{ t('settings.appProfiles.form.addBtn') }}
+              {{ editingAppProfileIndex === null ? t("settings.appProfiles.form.addBtn") : t("settings.appProfiles.form.updateBtn") }}
             </el-button>
           </div>
         </el-form>
@@ -378,13 +594,12 @@
 
       <template #footer>
         <div class="dialog-actions-row">
-          <el-button @click="appProfilesDialogVisible = false">{{ t('compose.cancel') }}</el-button>
-          <el-button type="primary" @click="saveAppProfiles" :loading="store.saving">{{ t('settings.appProfiles.form.saveBtn') }}</el-button>
+          <el-button @click="appProfilesDialogVisible = false">{{ t("compose.cancel") }}</el-button>
+          <el-button type="primary" @click="saveAppProfiles" :loading="store.saving">{{ t("settings.appProfiles.form.saveBtn") }}</el-button>
         </div>
       </template>
     </el-dialog>
 
-    <!-- global.env Dialog -->
     <el-dialog
       v-model="globalEnvDialogVisible"
       :title="t('settings.globalEnv.title', { name: selectedHost?.display_name })"
@@ -410,24 +625,61 @@
       </div>
       <template #footer>
         <div class="dialog-actions-row">
-          <el-button @click="globalEnvDialogVisible = false">{{ t('compose.cancel') }}</el-button>
+          <el-button @click="globalEnvDialogVisible = false">{{ t("compose.cancel") }}</el-button>
           <el-button type="primary" @click="saveGlobalEnv" :loading="store.saving">
-            {{ t('settings.globalEnv.save') }}
+            {{ t("settings.globalEnv.save") }}
           </el-button>
         </div>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="auditDrawerVisible" :title="t('settings.audit.detailTitle')" size="420px">
+      <dl v-if="selectedAuditLog" class="audit-detail-list">
+        <div>
+          <dt>{{ t("audit.time") }}</dt>
+          <dd>{{ formatTime(selectedAuditLog.timestamp) }}</dd>
+        </div>
+        <div>
+          <dt>{{ t("audit.user") }}</dt>
+          <dd>{{ selectedAuditLog.user || "-" }}</dd>
+        </div>
+        <div>
+          <dt>{{ t("audit.action") }}</dt>
+          <dd>{{ actionLabel(selectedAuditLog.action) }}</dd>
+        </div>
+        <div>
+          <dt>{{ t("audit.host") }}</dt>
+          <dd>{{ selectedAuditLog.host_id || "-" }}</dd>
+        </div>
+        <div>
+          <dt>{{ t("audit.stack") }}</dt>
+          <dd>{{ selectedAuditLog.stack_name || "-" }}</dd>
+        </div>
+        <div>
+          <dt>{{ t("audit.result") }}</dt>
+          <dd>{{ selectedAuditLog.result === "success" ? t("audit.success") : t("audit.failure") }}</dd>
+        </div>
+        <div>
+          <dt>{{ t("audit.ip") }}</dt>
+          <dd>{{ selectedAuditLog.ip_address || "-" }}</dd>
+        </div>
+        <div class="wide">
+          <dt>{{ t("audit.detail") }}</dt>
+          <dd>{{ selectedAuditLog.detail || "-" }}</dd>
+        </div>
+      </dl>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from "vue";
+import { ref, reactive, onMounted, computed, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
 import { useConfirm } from "@/composables/useConfirm";
 import {
-  ArrowLeft,
   Plus,
   Edit,
   Delete,
@@ -437,16 +689,126 @@ import {
   Link,
   Document,
 } from "@element-plus/icons-vue";
-import { useSettingsStore, type SettingItem, type HostConfigResponse, type StackIconEntry, type AppProfileEntry } from "@/stores/settings";
+import {
+  BookOpen,
+  GitBranch,
+  History,
+  MessageCircleQuestionMark,
+  RefreshCw,
+  Search,
+  Server,
+  SlidersHorizontal,
+  Wrench,
+} from "@lucide/vue";
+import dayjs from "dayjs";
+import { apiClient } from "@/api/client";
+import { useSettingsStore, type HostConfigResponse, type AppProfileEntry } from "@/stores/settings";
+import { useDashboardStore, type UpdateResult } from "@/stores/dashboard";
 import { useMobile } from "@/composables/useMobile";
+import UpdateBadge from "@/components/UpdateBadge.vue";
+
+type SettingsSectionId = "params" | "hosts" | "maintenance" | "audit" | "about";
+
+interface AuditEntry {
+  id: number;
+  timestamp: string;
+  user: string;
+  action: string;
+  host_id: string;
+  stack_name?: string;
+  result: string;
+  detail?: string;
+  ip_address?: string;
+}
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
 const store = useSettingsStore();
+const dashboardStore = useDashboardStore();
 const { confirm, alert: confirmAlert } = useConfirm();
 const { isMobile } = useMobile();
-const activeTab = ref("params");
+const appVersion = "0.6.3";
 
-// Params Form
+const activeSection = ref<SettingsSectionId>("params");
+const validSections: SettingsSectionId[] = ["params", "hosts", "maintenance", "audit", "about"];
+
+const settingSections = computed(() => [
+  {
+    id: "params" as const,
+    label: t("settings.sections.params"),
+    description: t("settings.sections.paramsDesc"),
+    icon: SlidersHorizontal,
+  },
+  {
+    id: "hosts" as const,
+    label: t("settings.sections.hosts"),
+    description: t("settings.sections.hostsDesc"),
+    icon: Server,
+  },
+  {
+    id: "maintenance" as const,
+    label: t("settings.sections.maintenance"),
+    description: t("settings.sections.maintenanceDesc"),
+    icon: Wrench,
+  },
+  {
+    id: "audit" as const,
+    label: t("settings.sections.audit"),
+    description: t("settings.sections.auditDesc"),
+    icon: History,
+  },
+  {
+    id: "about" as const,
+    label: t("settings.sections.about"),
+    description: t("settings.sections.aboutDesc"),
+    icon: GitBranch,
+  },
+]);
+
+const resourceLinks = computed(() => [
+  {
+    label: t("settings.about.github"),
+    description: t("settings.about.githubDesc"),
+    href: "https://github.com/virgooooox/fleetge",
+    icon: GitBranch,
+  },
+  {
+    label: t("settings.about.docs"),
+    description: t("settings.about.docsDesc"),
+    href: "https://github.com/virgooooox/fleetge#readme",
+    icon: BookOpen,
+  },
+  {
+    label: t("settings.about.releases"),
+    description: t("settings.about.releasesDesc"),
+    href: "https://github.com/virgooooox/fleetge/releases",
+    icon: History,
+  },
+  {
+    label: t("settings.about.issues"),
+    description: t("settings.about.issuesDesc"),
+    href: "https://github.com/virgooooox/fleetge/issues",
+    icon: MessageCircleQuestionMark,
+  },
+]);
+
+watch(
+  () => route.query.section,
+  (value) => {
+    const raw = Array.isArray(value) ? value[0] : value;
+    if (raw && validSections.includes(raw as SettingsSectionId)) {
+      activeSection.value = raw as SettingsSectionId;
+    }
+  },
+  { immediate: true },
+);
+
+function setSection(section: SettingsSectionId) {
+  activeSection.value = section;
+  void router.replace({ name: "settings", query: { section } });
+}
+
 const paramsForm = reactive<Record<string, any>>({
   DOCKER_POLL_INTERVAL: 10,
   METRICS_STREAM_INTERVAL: 1,
@@ -464,34 +826,25 @@ const paramsRules = reactive<FormRules>({
   UPDATE_CHECK_INTERVAL: [{ required: true, message: t("settings.hosts.form.required.id"), trigger: "blur" }],
   ADMIN_USERNAME: [
     { required: true, message: t("settings.hosts.form.required.id"), trigger: "blur" },
-    { min: 3, message: t("settings.hosts.form.required.id"), trigger: "blur" }
+    { min: 3, message: t("settings.hosts.form.required.id"), trigger: "blur" },
   ],
   JWT_EXPIRE_HOURS: [{ required: true, message: t("settings.hosts.form.required.id"), trigger: "blur" }],
 });
 
-// Readonly Fields
 const readonlyForm = reactive({
   JWT_SECRET: "",
   CREDENTIALS_KEY: "",
   ADMIN_PASSWORD: "",
 });
 
-// Load all configuration lists
 async function loadSettings() {
   try {
     await store.fetchSettings();
-    // Hydrate forms
     store.settings.forEach((item) => {
       if (item.is_writable) {
-        if (item.type === "number") {
-          paramsForm[item.key] = Number(item.value);
-        } else {
-          paramsForm[item.key] = item.value;
-        }
-      } else {
-        if (item.key in readonlyForm) {
-          (readonlyForm as any)[item.key] = item.value;
-        }
+        paramsForm[item.key] = item.type === "number" ? Number(item.value) : item.value;
+      } else if (item.key in readonlyForm) {
+        (readonlyForm as any)[item.key] = item.value;
       }
     });
   } catch (err: any) {
@@ -516,7 +869,6 @@ async function handleSaveParams() {
   });
 }
 
-// Host Management Tab
 const hostDialogVisible = ref(false);
 const hostFormMode = ref<"create" | "edit">("create");
 const hostFormLoading = ref(false);
@@ -528,8 +880,6 @@ const hostForm = reactive({
   display_name: "",
   enabled: true,
   sort_order: 0,
-  
-  // Agent Mode
   agent_url: "",
   agent_token: "",
 });
@@ -557,7 +907,7 @@ const hostRules = reactive<FormRules>({
   display_name: [{ required: true, message: t("settings.hosts.form.required.name"), trigger: "blur" }],
   agent_url: [
     { required: true, message: t("settings.hosts.form.required.agentUrl"), trigger: "blur" },
-    { validator: validateHttpUrl, trigger: "blur" }
+    { validator: validateHttpUrl, trigger: "blur" },
   ],
 });
 
@@ -566,10 +916,9 @@ function openCreateHostDialog() {
   hostForm.host_id = "";
   hostForm.display_name = "";
   hostForm.enabled = true;
-  hostForm.sort_order = store.hosts.length > 0 ? Math.max(...store.hosts.map(h => h.sort_order)) + 10 : 10;
+  hostForm.sort_order = store.hosts.length > 0 ? Math.max(...store.hosts.map((h) => h.sort_order)) + 10 : 10;
   hostForm.agent_url = "";
   hostForm.agent_token = "";
-  
   hostDialogVisible.value = true;
 }
 
@@ -579,21 +928,16 @@ function openEditHostDialog(row: HostConfigResponse) {
   hostForm.display_name = row.display_name;
   hostForm.enabled = row.enabled;
   hostForm.sort_order = row.sort_order;
-  
   hostForm.agent_url = row.agent_url || "";
-  hostForm.agent_token = ""; // Password fields are masked
-  
+  hostForm.agent_token = "";
   hostDialogVisible.value = true;
 }
 
 function closeHostDialog() {
   hostDialogVisible.value = false;
-  if (hostFormRef.value) {
-    hostFormRef.value.clearValidate();
-  }
+  hostFormRef.value?.clearValidate();
 }
 
-// Transform form values to request payload shapes
 function prepareHostPayload() {
   const payload: any = {
     display_name: hostForm.display_name,
@@ -606,7 +950,7 @@ function prepareHostPayload() {
   if (hostFormMode.value === "create") {
     payload.host_id = hostForm.host_id;
   }
-  
+
   return payload;
 }
 
@@ -640,14 +984,14 @@ async function toggleHostEnabled(row: HostConfigResponse) {
       enabled: row.enabled,
       sort_order: row.sort_order,
       agent_url: row.agent_url,
-      agent_token: null, // Keep secrets unchanged
+      agent_token: null,
     };
     await store.updateHost(row.host_id, payload);
     ElMessage.success(
-      t(row.enabled ? "settings.hosts.toggle.enabledSuccess" : "settings.hosts.toggle.disabledSuccess", { name: row.display_name })
+      t(row.enabled ? "settings.hosts.toggle.enabledSuccess" : "settings.hosts.toggle.disabledSuccess", { name: row.display_name }),
     );
   } catch (err: any) {
-    row.enabled = !row.enabled; // Rollback switch state
+    row.enabled = !row.enabled;
     ElMessage.error(err || t("settings.hosts.toggle.error"));
   }
 }
@@ -662,7 +1006,7 @@ async function confirmDeleteHost(row: HostConfigResponse) {
         confirmButtonText: t("stack.action.delete"),
         cancelButtonText: t("stack.confirm.cancel"),
         confirmButtonClass: "pg-confirm-btn",
-      }
+      },
     );
     await store.deleteHost(row.host_id);
     ElMessage.success(t("settings.hosts.delete.success", { name: row.display_name }));
@@ -687,13 +1031,13 @@ async function testHostConnection(row: HostConfigResponse) {
     confirmAlert(
       t("settings.hosts.test.successDetail", { time: res.response_time_ms, msg: res.message }),
       t("settings.hosts.test.successTitle"),
-      { tone: "success", confirmButtonText: t("stack.confirm.ok") }
+      { tone: "success", confirmButtonText: t("stack.confirm.ok") },
     );
   } else {
     confirmAlert(
       t("settings.hosts.test.failedDetail", { msg: res.message }),
       t("settings.hosts.test.failedTitle"),
-      { tone: "error", confirmButtonText: t("stack.confirm.ok") }
+      { tone: "error", confirmButtonText: t("stack.confirm.ok") },
     );
   }
 }
@@ -725,12 +1069,12 @@ async function testFormConnection() {
   }
 }
 
-// App Profiles Section
 const appProfilesDialogVisible = ref(false);
 const selectedHost = ref<HostConfigResponse | null>(null);
 const appProfilesLoading = ref(false);
 const appProfilesList = ref<AppProfileEntry[]>([]);
 const availableFiles = ref<string[]>([]);
+const appProfilesTableMaxHeight = computed(() => (appProfilesList.value.length > 10 ? 460 : undefined));
 const globalEnvDialogVisible = ref(false);
 const globalEnvLoading = ref(false);
 const globalEnvContent = ref("");
@@ -740,28 +1084,20 @@ const appProfileForm = reactive({
   title: "",
   app_url: "",
   group: "",
-  sourceType: "none", // "none" | "url" | "local"
+  sourceType: "none" as "none" | "url" | "local",
   icon_url: "",
   icon_file: "",
 });
 
 const appProfileFormRef = ref<FormInstance>();
+const editingAppProfileIndex = ref<number | null>(null);
 const appProfileRules = reactive<FormRules>({
-  stack_pattern: [
-    { required: true, message: t("settings.icons.required.pattern"), trigger: "blur" }
-  ],
-  app_url: [
-    { validator: validateHttpUrl, trigger: "blur" }
-  ],
-  icon_url: [
-    { validator: validateHttpUrl, trigger: "blur" }
-  ],
+  stack_pattern: [{ required: true, message: t("settings.icons.required.pattern"), trigger: "blur" }],
+  app_url: [{ validator: validateHttpUrl, trigger: "blur" }],
+  icon_url: [{ validator: validateHttpUrl, trigger: "blur" }],
 });
 
-async function openAppProfilesDialog(row: HostConfigResponse) {
-  selectedHost.value = row;
-  appProfilesList.value = [];
-  availableFiles.value = [];
+function resetAppProfileForm() {
   appProfileForm.stack_pattern = "";
   appProfileForm.title = "";
   appProfileForm.app_url = "";
@@ -769,23 +1105,43 @@ async function openAppProfilesDialog(row: HostConfigResponse) {
   appProfileForm.sourceType = "none";
   appProfileForm.icon_url = "";
   appProfileForm.icon_file = "";
+  editingAppProfileIndex.value = null;
+  appProfileFormRef.value?.clearValidate();
+}
+
+function normalizeAppProfile(row: AppProfileEntry): AppProfileEntry {
+  const legacyRow = row as AppProfileEntry & {
+    icon?: string | null;
+    icon_file?: string | null;
+    icon_url?: string | null;
+  };
+
+  return {
+    stack_pattern: row.stack_pattern,
+    title: row.title || null,
+    app_url: row.app_url || null,
+    group: row.group || null,
+    icon_value: row.icon_value || legacyRow.icon_url || legacyRow.icon_file || legacyRow.icon || null,
+  };
+}
+
+async function openAppProfilesDialog(row: HostConfigResponse) {
+  selectedHost.value = row;
+  appProfilesList.value = [];
+  availableFiles.value = [];
+  resetAppProfileForm();
   appProfilesDialogVisible.value = true;
-  
+
   appProfilesLoading.value = true;
   try {
     const res = await store.fetchAppProfiles(row.host_id);
-    appProfilesList.value = res.profiles || [];
+    appProfilesList.value = (res.profiles || []).map(normalizeAppProfile);
     availableFiles.value = res.available_files || [];
   } catch (e: any) {
     ElMessage.error(e || t("settings.appProfiles.fetchError"));
   } finally {
     appProfilesLoading.value = false;
   }
-}
-
-function isHttpUrl(value: string | null) {
-  if (!value) return false;
-  return /^https?:\/\//.test(value);
 }
 
 function getIconUrl(value: string | null) {
@@ -795,8 +1151,58 @@ function getIconUrl(value: string | null) {
   return `/api/static/icons/${value}`;
 }
 
+function matchIconValue(name: string, mapping?: Record<string, string> | null): string | null {
+  if (!mapping) return null;
+  if (mapping[name]) return mapping[name];
+
+  for (const [key, value] of Object.entries(mapping)) {
+    if (key.endsWith("*") && !key.startsWith("*") && name.startsWith(key.slice(0, -1))) {
+      return value;
+    }
+  }
+
+  for (const [key, value] of Object.entries(mapping)) {
+    if (key.startsWith("*") && !key.endsWith("*") && name.endsWith(key.slice(1))) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function getAppProfileIconValue(row: AppProfileEntry): string | null {
+  return row.icon_value || matchIconValue(row.stack_pattern, selectedHost.value?.stack_icons);
+}
+
 function removeAppProfile(index: number) {
   appProfilesList.value.splice(index, 1);
+  if (editingAppProfileIndex.value === index) {
+    resetAppProfileForm();
+  } else if (editingAppProfileIndex.value !== null && editingAppProfileIndex.value > index) {
+    editingAppProfileIndex.value -= 1;
+  }
+}
+
+function editAppProfile(row: AppProfileEntry, index: number) {
+  editingAppProfileIndex.value = index;
+  appProfileForm.stack_pattern = row.stack_pattern;
+  appProfileForm.title = row.title || "";
+  appProfileForm.app_url = row.app_url || "";
+  appProfileForm.group = row.group || "";
+
+  if (!row.icon_value) {
+    appProfileForm.sourceType = "none";
+    appProfileForm.icon_url = "";
+    appProfileForm.icon_file = "";
+  } else if (/^https?:\/\//.test(row.icon_value) || row.icon_value.startsWith("/")) {
+    appProfileForm.sourceType = "url";
+    appProfileForm.icon_url = row.icon_value;
+    appProfileForm.icon_file = "";
+  } else {
+    appProfileForm.sourceType = "local";
+    appProfileForm.icon_url = "";
+    appProfileForm.icon_file = row.icon_value;
+  }
 }
 
 async function handleIconFileSelected(uploadFile: any) {
@@ -819,7 +1225,7 @@ async function handleIconFileSelected(uploadFile: any) {
     const filename = await store.uploadIcon(selectedHost.value.host_id, rawFile);
     loadingMsg.close();
     ElMessage.success(t("settings.icons.upload.success", { name: filename }));
-    
+
     if (!availableFiles.value.includes(filename)) {
       availableFiles.value.push(filename);
       availableFiles.value.sort();
@@ -832,13 +1238,11 @@ async function handleIconFileSelected(uploadFile: any) {
 }
 
 async function addAppProfile() {
-  if (!appProfileFormRef.value) return;
-  
   if (!appProfileForm.stack_pattern.trim()) {
     ElMessage.error(t("settings.icons.required.pattern"));
     return;
   }
-  
+
   let val: string | null = null;
   if (appProfileForm.sourceType === "url") {
     if (!appProfileForm.icon_url.trim()) {
@@ -858,8 +1262,9 @@ async function addAppProfile() {
     val = appProfileForm.icon_file;
   }
 
-  const dupIndex = appProfilesList.value.findIndex(i => i.stack_pattern === appProfileForm.stack_pattern.trim());
-  
+  const editingIndex = editingAppProfileIndex.value;
+  const dupIndex = appProfilesList.value.findIndex((i) => i.stack_pattern === appProfileForm.stack_pattern.trim());
+
   const newProfile: AppProfileEntry = {
     stack_pattern: appProfileForm.stack_pattern.trim(),
     title: appProfileForm.title.trim() || null,
@@ -868,20 +1273,21 @@ async function addAppProfile() {
     icon_value: val,
   };
 
-  if (dupIndex > -1) {
+  if (editingIndex !== null && dupIndex > -1 && dupIndex !== editingIndex) {
+    appProfilesList.value[dupIndex] = newProfile;
+    appProfilesList.value.splice(editingIndex, 1);
+    ElMessage.info(t("settings.icons.mapping.updated", { pattern: appProfileForm.stack_pattern.trim() }));
+  } else if (editingIndex !== null) {
+    appProfilesList.value[editingIndex] = newProfile;
+    ElMessage.info(t("settings.icons.mapping.updated", { pattern: appProfileForm.stack_pattern.trim() }));
+  } else if (dupIndex > -1) {
     appProfilesList.value[dupIndex] = newProfile;
     ElMessage.info(t("settings.icons.mapping.updated", { pattern: appProfileForm.stack_pattern.trim() }));
   } else {
     appProfilesList.value.push(newProfile);
   }
 
-  appProfileForm.stack_pattern = "";
-  appProfileForm.title = "";
-  appProfileForm.app_url = "";
-  appProfileForm.group = "";
-  appProfileForm.sourceType = "none";
-  appProfileForm.icon_url = "";
-  appProfileForm.icon_file = "";
+  resetAppProfileForm();
 }
 
 async function saveAppProfiles() {
@@ -921,9 +1327,179 @@ async function saveGlobalEnv() {
   }
 }
 
+const checkingUpdates = ref(false);
+const updateSearch = ref("");
+const updateStatusFilter = ref("");
+
+const visibleUpdateResults = computed(() =>
+  (dashboardStore.updateResults || []).filter((item) =>
+    item.status === "updatable"
+    || item.status === "up_to_date"
+    || item.status === "needs_auth"
+    || item.status === "rate_limited"
+    || item.status === "check_failed"
+    || item.last_failure_status === "needs_auth"
+    || item.last_failure_status === "rate_limited"
+    || item.last_failure_status === "check_failed",
+  ),
+);
+
+const filteredUpdateResults = computed(() => {
+  const q = updateSearch.value.trim().toLowerCase();
+  return visibleUpdateResults.value.filter((item) => {
+    const status = displayStatus(item);
+    if (updateStatusFilter.value && status !== updateStatusFilter.value) return false;
+    if (!q) return true;
+    return item.host_id.toLowerCase().includes(q) || item.image.toLowerCase().includes(q);
+  });
+});
+
+function displayStatus(item: UpdateResult) {
+  return item.last_failure_status || item.status;
+}
+
+function shortenDigest(value?: string) {
+  return value ? `${value.slice(0, 19)}...` : "-";
+}
+
+async function fetchUpdateResults() {
+  checkingUpdates.value = true;
+  try {
+    await dashboardStore.fetchUpdateChecks(true);
+  } catch (e) {
+    console.error("Failed to fetch update checks:", e);
+  } finally {
+    checkingUpdates.value = false;
+  }
+}
+
+async function runMaintenanceCheck() {
+  checkingUpdates.value = true;
+  try {
+    await dashboardStore.runUpdateCheck(true);
+  } catch (e) {
+    console.error("Failed to run update check:", e);
+  } finally {
+    checkingUpdates.value = false;
+  }
+}
+
+function openUpdatableApps() {
+  void router.push({ name: "apps", query: { status: "updatable" } });
+}
+
+const auditLogs = ref<AuditEntry[]>([]);
+const auditLoading = ref(false);
+const auditSearch = ref("");
+const auditResultFilter = ref("");
+const auditActionFilter = ref("");
+const selectedAuditLog = ref<AuditEntry | null>(null);
+const auditDrawerVisible = ref(false);
+const auditLimit = 50;
+
+const auditActionKeys: Record<string, string> = {
+  "stack.start": "audit.action.stack.start",
+  "stack.stop": "audit.action.stack.stop",
+  "stack.down": "audit.action.stack.down",
+  "stack.restart": "audit.action.stack.restart",
+  "stack.update": "audit.action.stack.update",
+  "stack.delete": "audit.action.stack.delete",
+  "stack.service.start": "audit.action.stack.serviceStart",
+  "stack.service.stop": "audit.action.stack.serviceStop",
+  "stack.service.restart": "audit.action.stack.serviceRestart",
+  "stack.compose.save": "audit.action.stack.composeSave",
+  "stack.compose.deploy": "audit.action.stack.composeDeploy",
+  "update_checks.run": "audit.action.updateChecksRun",
+  "settings.update": "audit.action.settings.update",
+  "host.create": "audit.action.host.create",
+  "host.update": "audit.action.host.update",
+  "host.delete": "audit.action.host.delete",
+  "host.stack_icons.update": "audit.action.host.stack_icons.update",
+  "host.test_connection": "audit.action.host.test_connection",
+};
+
+const actionTypes: Record<string, string> = {
+  "stack.start": "success",
+  "stack.stop": "warning",
+  "stack.down": "warning",
+  "stack.restart": "",
+  "stack.update": "primary",
+  "stack.delete": "danger",
+  "stack.service.start": "success",
+  "stack.service.stop": "warning",
+  "stack.service.restart": "",
+  "stack.compose.save": "info",
+  "stack.compose.deploy": "primary",
+  "update_checks.run": "info",
+  "settings.update": "warning",
+  "host.create": "success",
+  "host.update": "primary",
+  "host.delete": "danger",
+  "host.stack_icons.update": "info",
+  "host.test_connection": "success",
+};
+
+const auditActions = computed(() =>
+  Array.from(new Set(auditLogs.value.map((row) => row.action)))
+    .filter(Boolean)
+    .sort()
+    .map((action) => ({ value: action, label: actionLabel(action) })),
+);
+
+const filteredAuditLogs = computed(() => {
+  const q = auditSearch.value.trim().toLowerCase();
+  return auditLogs.value.filter((row) => {
+    if (auditResultFilter.value && row.result !== auditResultFilter.value) return false;
+    if (auditActionFilter.value && row.action !== auditActionFilter.value) return false;
+    if (!q) return true;
+    return [
+      row.user,
+      row.action,
+      row.host_id,
+      row.stack_name,
+      row.detail,
+      row.ip_address,
+    ].some((value) => String(value || "").toLowerCase().includes(q));
+  });
+});
+
+function actionLabel(action: string): string {
+  const key = auditActionKeys[action];
+  return key ? t(key as any) : action;
+}
+
+function actionType(action: string): string {
+  return actionTypes[action] || "info";
+}
+
+function formatTime(ts: string): string {
+  return dayjs(ts).format("YYYY-MM-DD HH:mm:ss");
+}
+
+async function fetchLogs() {
+  auditLoading.value = true;
+  try {
+    const res = await apiClient.get("/api/audit-logs", {
+      params: { limit: auditLimit, offset: 0 },
+    });
+    auditLogs.value = res.data || [];
+  } catch (e) {
+    console.error("Failed to fetch audit logs:", e);
+  } finally {
+    auditLoading.value = false;
+  }
+}
+
+function openAuditDrawer(row: AuditEntry) {
+  selectedAuditLog.value = row;
+  auditDrawerVisible.value = true;
+}
+
 onMounted(() => {
   void loadSettings();
   void store.fetchHosts();
+  void fetchUpdateResults();
+  void fetchLogs();
 });
 </script>
 
@@ -931,77 +1507,287 @@ onMounted(() => {
 .settings-layout {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.section-heading p {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.settings-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-panel);
+  padding: 6px;
+}
+
+.settings-tab {
+  min-width: max-content;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.settings-tab:hover,
+.settings-tab.active {
+  border-color: var(--nav-active-border);
+  background: var(--nav-active-bg);
+  color: var(--text-primary);
+}
+
+.settings-tab .el-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-blue);
+  flex: 0 0 auto;
+}
+
+.settings-workspace {
+  min-width: 0;
+}
+
+.settings-main {
+  min-width: 0;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-panel);
+  padding: 18px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 16px;
 }
 
-.settings-panel {
-  padding: 24px;
+.section-heading h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 20px;
+  line-height: 1.2;
 }
 
-.settings-tabs :deep(.el-tabs__header) {
-  border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 20px;
+.section-actions,
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.settings-tabs :deep(.el-tabs__item) {
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.tab-pane-content {
+.settings-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding-top: 10px;
+  gap: 18px;
 }
 
-.tab-alert {
+.params-settings-form {
+  gap: 12px;
+}
+
+.form-cluster {
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
+  background: var(--surface-panel-raised);
+  padding: 16px;
+}
+
+.params-settings-form .form-cluster {
+  overflow: hidden;
+  padding: 0;
+}
+
+.cluster-title,
+.section-kicker {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.params-settings-form .cluster-title {
+  margin: 0;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-panel) 68%, transparent);
+}
+
+.settings-field-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-field-row {
+  margin: 0;
+  padding: 13px 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.settings-field-row:first-child {
+  border-top: 0;
+}
+
+.settings-field-row :deep(.el-form-item__label) {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.settings-field-row :deep(.el-form-item__content) {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.settings-field-label {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: normal;
+}
+
+.settings-field-help {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.params-settings-form :deep(.el-input-number) {
+  width: 148px;
+}
+
+.params-settings-form :deep(.el-input) {
+  width: min(360px, 100%);
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px 24px;
 }
 
-.input-with-unit {
+.input-with-unit,
+.icons-preview-strip,
+.local-file-picker {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
-.unit-text {
-  font-size: 13px;
+.unit-text,
+.form-help {
   color: var(--text-muted);
-  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .form-help {
-  font-size: 12px;
-  color: var(--text-muted);
   margin-top: 6px;
+}
+
+@media (min-width: 860px) {
+  .settings-field-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, auto);
+    align-items: center;
+    column-gap: 22px;
+  }
+
+  .settings-field-row :deep(.el-form-item__label) {
+    grid-column: 1;
+  }
+
+  .settings-field-row :deep(.el-form-item__content) {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 859px) {
+  .settings-field-row :deep(.el-form-item__content) {
+    justify-content: flex-start;
+    margin-top: 10px;
+  }
+}
+
+.settings-inline-details {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-panel-raised);
+}
+
+.settings-inline-details summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.settings-inline-details summary span {
+  flex: 0 0 auto;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.settings-inline-details summary small {
+  color: var(--text-muted);
+  font-size: 12px;
   line-height: 1.4;
 }
 
-.form-actions-row {
-  margin-top: 30px;
+.inline-security-form {
   border-top: 1px solid var(--border-subtle);
-  padding-top: 20px;
+  padding: 16px;
 }
 
-/* Tab 3 Hosts */
-.pane-header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.pane-header-kicker {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-secondary);
+.table-frame {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
 }
 
 .host-table {
@@ -1009,139 +1795,161 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* Stack Icons cell — preview strip + manage button */
-.icons-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+.host-table :deep(.el-table__cell) {
+  padding: 7px 0;
 }
 
-.icons-preview-strip {
-  display: flex;
-  align-items: center;
-  gap: 3px;
+.host-table :deep(.cell) {
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
-.icon-strip-thumb {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  background: var(--surface-panel-raised);
-  border: 1px solid var(--border-subtle);
-  flex-shrink: 0;
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-}
-
-.icon-strip-placeholder {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.icons-more-chip {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-muted);
-  background: var(--surface-panel-raised);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  padding: 1px 4px;
-  white-space: nowrap;
-}
-
-.icons-empty {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.icons-manage-btn {
-  flex-shrink: 0;
-  background: transparent !important;
-  border-color: var(--el-border-color) !important;
-  color: var(--el-text-color-secondary) !important;
-}
-
-.icons-manage-btn:hover {
-  background: var(--el-fill-color-light) !important;
-  border-color: var(--el-border-color-hover) !important;
-  color: var(--el-text-color-primary) !important;
-}
-
-/* Pierce into icon element inside button */
-:deep(.icons-manage-btn .el-icon) {
-  color: inherit;
-}
-
+.host-code-text,
+.audit-code,
+.detail-text,
+.digest-text,
 .url-text {
-  font-size: var(--text-md);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  word-break: break-all;
-}
-
-.host-code-text {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  word-break: break-all;
 }
 
-.url-text.text-muted {
-  line-height: 1.4;
+.image-ref {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: rgba(5, 9, 20, 0.78);
+  color: #e5edf8;
+  border-radius: 4px;
+  padding: 2px 6px;
 }
 
-.row-operations {
+.pattern-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--surface-panel-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.section-alert {
+  border-radius: 8px;
+}
+
+.about-panel {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-panel-raised);
+  overflow: hidden;
+}
+
+.about-version-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
-/* Dialog Styles */
-.dialog-grid {
+.about-version-row strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.about-link-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.about-link-row {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-top: 1px solid transparent;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.about-link-row:hover {
+  background: var(--nav-hover-bg);
+  color: var(--text-primary);
+}
+
+.about-link-row .el-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 7px;
+  background: rgba(96, 165, 250, 0.12);
+  color: var(--accent-blue);
+}
+
+.about-link-row span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.about-link-row strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.about-link-row small {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.toolbar-input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.toolbar-select {
+  width: 160px;
+}
+
+.toolbar-select.wide {
+  width: 220px;
+}
+
+.audit-time {
+  font-variant-numeric: tabular-nums;
+}
+
+:deep(.audit-row) {
+  cursor: pointer;
+}
+
+.dialog-grid,
+.icon-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
-.mode-radios {
-  margin-bottom: 12px;
-}
-
-.mode-section {
+.mode-section,
+.add-icon-form {
   background: var(--surface-panel-raised);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 16px;
-  margin-top: 12px;
-}
-
-.legacy-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.legacy-card {
-  background: var(--surface-base);
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  padding: 14px;
-}
-
-.legacy-card.full-width {
-  grid-column: span 2;
-}
-
-.legacy-card-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 12px;
-  border-left: 3px solid var(--accent-blue);
-  padding-left: 8px;
-  line-height: 1;
 }
 
 .dialog-actions-row {
@@ -1156,105 +1964,240 @@ onMounted(() => {
   flex: 1;
 }
 
-/* Icons Management */
-.icons-dialog-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
+.icons-dialog-body,
 .global-env-dialog {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-.global-env-textarea :deep(textarea) {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
+.global-env-textarea :deep(textarea),
 .mono-input :deep(.el-input__inner) {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-.section-kicker {
+.global-env-textarea :deep(textarea) {
   font-size: 12px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 8px;
+  line-height: 1.55;
 }
 
-.pattern-code {
-  background: var(--surface-panel-raised);
+.icon-preview-cell {
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
-  padding: 2px 6px;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--accent-blue);
-}
-
-.font-mono {
-  font-family: var(--font-mono);
+  background: var(--surface-panel-raised);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
 }
 
 .icon-preview-cell {
   width: 32px;
   height: 32px;
-  border-radius: 4px;
-  background: var(--surface-panel-raised);
-  display: grid;
-  place-items: center;
   padding: 2px;
 }
 
 .icon-placeholder-cell {
-  font-size: 18px;
   color: var(--text-muted);
 }
 
-.add-icon-form {
-  background: var(--surface-panel-raised);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.icon-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.local-file-picker {
+.app-profile-group-cell {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
+  justify-content: center;
+  min-width: 0;
+}
+
+.app-profile-icon-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.app-profile-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.app-profile-row-actions :deep(.el-button) {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+.app-profile-row-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.app-profiles-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-profile-settings-btn {
+  height: 28px;
+  min-width: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+  border: 1px solid var(--el-border-color);
+  border-radius: 7px;
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0 8px;
+  position: relative;
+  z-index: 1;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.app-profile-settings-btn:hover {
+  background: var(--el-fill-color-light);
+  border-color: var(--el-border-color-hover);
+  color: var(--text-primary);
+}
+
+.app-profile-settings-btn .el-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  color: currentColor;
+}
+
+.app-profile-settings-btn :deep(svg) {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.row-operations {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+.row-operations :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.host-action-btn {
+  height: 28px;
+}
+
+.host-action-test {
+  padding: 0 8px;
+}
+
+.host-icon-btn {
+  width: 28px;
+  padding: 0;
 }
 
 .file-select {
   flex: 1;
 }
 
+.compact-divider {
+  margin: 8px 0 2px;
+}
+
+.add-icon-form {
+  padding: 12px;
+}
+
+.add-icon-form .icon-form-grid {
+  gap: 8px 14px;
+}
+
+.add-icon-form :deep(.el-form-item) {
+  margin-bottom: 6px;
+}
+
+.add-icon-form .form-help {
+  margin-top: 4px;
+}
+
+.add-icon-form .local-file-picker {
+  gap: 6px;
+}
+
 .icon-form-action {
   display: flex;
   justify-content: flex-end;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.audit-detail-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 0;
+}
+
+.audit-detail-list div {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-panel-raised);
+  padding: 10px 12px;
+}
+
+.audit-detail-list dt {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.audit-detail-list dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+@media (max-width: 1100px) {
+  .settings-tabs {
+    scrollbar-width: thin;
+  }
 }
 
 @media (max-width: 768px) {
   .dialog-grid,
-  .icon-form-grid,
-  .legacy-grid {
+  .icon-form-grid {
     grid-template-columns: 1fr;
   }
-  
+
+  .settings-tabs {
+    padding: 5px;
+  }
+
+  .settings-tab {
+    min-height: 34px;
+    padding: 0 10px;
+  }
+
+  .section-heading {
+    flex-direction: column;
+  }
+
+  .settings-section {
+    padding: 14px;
+  }
+
   :deep(.mobile-hidden) {
     display: none !important;
   }

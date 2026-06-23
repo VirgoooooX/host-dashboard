@@ -3,8 +3,9 @@
     <!-- Header with controls -->
     <header class="ui-page-header">
       <div class="header-left">
-        <div class="ui-section-kicker">{{ t('apps.title') }}</div>
+        <div class="ui-section-kicker">{{ t('apps.kicker') }}</div>
         <h2 class="ui-page-title">{{ t('apps.title') }}</h2>
+        <p class="apps-page-subtitle">{{ t('apps.description') }}</p>
       </div>
       
       <div class="header-right">
@@ -353,7 +354,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, onUnmounted, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { ElMessage } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
@@ -383,6 +384,7 @@ import StackOperationDock from "@/components/StackOperationDock.vue";
 import UpdateBadge from "@/components/UpdateBadge.vue";
 
 const router = useRouter();
+const route = useRoute();
 const store = useSettingsStore();
 const dashboardStore = useDashboardStore();
 const { t } = useI18n();
@@ -404,6 +406,17 @@ const viewMode = ref<"group" | "host" | "all">(
 watch(viewMode, (newVal) => {
   localStorage.setItem("apps_view_mode", newVal);
 });
+
+const routeStatusFilters = new Set(["", "running", "error", "updatable", "no-url"]);
+
+watch(
+  () => route.query.status,
+  (value) => {
+    const next = Array.isArray(value) ? value[0] : value;
+    filterStatus.value = typeof next === "string" && routeStatusFilters.has(next) ? next : "";
+  },
+  { immediate: true },
+);
 
 // SSE Dock Dialog state
 const dockDialogVisible = ref(false);
@@ -888,6 +901,13 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 16px;
   min-height: calc(100vh - 120px);
+}
+
+.apps-page-subtitle {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .header-right {

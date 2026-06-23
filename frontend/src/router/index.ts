@@ -3,8 +3,6 @@ import { useAuthStore } from "@/stores/auth";
 import LoginView from "@/views/LoginView.vue";
 import DashboardView from "@/views/DashboardView.vue";
 import HostDetailView from "@/views/HostDetailView.vue";
-import UpdatesView from "@/views/UpdatesView.vue";
-import AuditView from "@/views/AuditView.vue";
 import SettingsView from "@/views/SettingsView.vue";
 import AppsView from "@/views/AppsView.vue";
 
@@ -14,8 +12,8 @@ const router = createRouter({
     { path: "/login", name: "login", component: LoginView },
     { path: "/", name: "dashboard", component: DashboardView, meta: { requiresAuth: true } },
     { path: "/hosts/:hostId", name: "host-detail", component: HostDetailView, meta: { requiresAuth: true } },
-    { path: "/updates", name: "updates", component: UpdatesView, meta: { requiresAuth: true } },
-    { path: "/audit", name: "audit", component: AuditView, meta: { requiresAuth: true } },
+    { path: "/updates", redirect: { name: "settings", query: { section: "maintenance" } } },
+    { path: "/audit", redirect: { name: "settings", query: { section: "audit" } } },
     { path: "/settings", name: "settings", component: SettingsView, meta: { requiresAuth: true } },
     { path: "/apps", name: "apps", component: AppsView, meta: { requiresAuth: true } },
     { path: "/:pathMatch(.*)*", redirect: "/" },

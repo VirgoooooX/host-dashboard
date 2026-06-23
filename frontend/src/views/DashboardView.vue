@@ -35,7 +35,12 @@
             <el-icon :size="60"><XCircle /></el-icon>
           </div>
         </div>
-        <button class="summary-tile critical" type="button" @click="router.push('/updates')" @mouseenter="setTileAnim(3)">
+        <button
+          class="summary-tile critical"
+          type="button"
+          @click="router.push({ name: 'apps', query: { status: 'updatable' } })"
+          @mouseenter="setTileAnim(3)"
+        >
           <span class="summary-label">{{ t('dashboard.updatableImages') }}</span>
           <strong>{{ store.updateCount }}</strong>
           <small>{{ t('dashboard.updates') }}</small>

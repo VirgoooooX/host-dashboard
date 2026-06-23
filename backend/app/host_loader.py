@@ -40,7 +40,7 @@ def load_hosts_from_yaml() -> int:
         logger.warning("Host config file not found: %s", config_path)
         return 0
 
-    with open(config_path, "r") as f:
+    with config_path.open("r", encoding="utf-8-sig") as f:
         data = yaml.safe_load(f)
 
     if not data or "hosts" not in data:

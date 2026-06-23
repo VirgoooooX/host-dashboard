@@ -47,21 +47,20 @@
         </button>
       </div>
 
-      <!-- Mobile sidebar footer actions -->
       <div class="ops-sidebar-footer">
-        <button class="ops-sidebar-footer-btn" type="button" @click="switchLocale">
+        <button class="ops-sidebar-footer-btn ops-sidebar-mobile-action" type="button" @click="switchLocale">
           <el-icon><Globe /></el-icon>
           <span>{{ localeLabel === '中' ? '简体中文' : 'English' }}</span>
         </button>
-        <button class="ops-sidebar-footer-btn" type="button" @click="theme.toggle()">
+        <button class="ops-sidebar-footer-btn ops-sidebar-mobile-action" type="button" @click="theme.toggle()">
           <el-icon><component :is="themeIcon" /></el-icon>
           <span>{{ theme.current.value === 'dark' ? t('shell.switchLight') : t('shell.switchDark') }}</span>
         </button>
-        <button class="ops-sidebar-footer-btn" type="button" :disabled="store.manualLoading" @click="store.refreshAll">
+        <button class="ops-sidebar-footer-btn ops-sidebar-mobile-action" type="button" :disabled="store.manualLoading" @click="store.refreshAll">
           <el-icon><RefreshCw /></el-icon>
           <span>{{ t('shell.refresh') }}</span>
         </button>
-        <button class="ops-sidebar-footer-btn logout" type="button" @click="logout">
+        <button class="ops-sidebar-footer-btn ops-sidebar-mobile-action logout" type="button" @click="logout">
           <el-icon><LogOut /></el-icon>
           <span>{{ t('shell.logout') }}</span>
         </button>
@@ -112,11 +111,8 @@
             <span class="ops-health-dot" />
             {{ t('shell.onlineCount', { online: store.onlineCount, total: store.hosts.length }) }}
           </div>
-          <div class="ops-control ops-status-pill warning" v-if="store.updateCount > 0">
-            {{ t('shell.updateCount', { count: store.updateCount }) }}
-          </div>
           <el-button
-            class="ops-control ui-icon-button"
+            class="ops-control ui-icon-button ops-desktop-tool"
             size="small"
             aria-label="EN/中"
             @click="switchLocale"
@@ -124,14 +120,29 @@
             {{ localeLabel }}
           </el-button>
           <el-button
-            class="ops-control ui-icon-button"
+            class="ops-control ui-icon-button ops-desktop-tool"
             size="small"
             :icon="themeIcon"
             :aria-label="theme.current.value === 'dark' ? t('shell.switchLight') : t('shell.switchDark')"
             @click="theme.toggle()"
           />
-
-          <el-button class="ops-control ui-button ui-button--compact ui-button--muted" size="small" @click="logout">
+          <el-button
+            class="ops-control ui-icon-button ops-desktop-tool"
+            size="small"
+            :icon="RefreshCw"
+            :loading="store.manualLoading"
+            :aria-label="t('shell.refresh')"
+            @click="store.refreshAll"
+          />
+          <el-button
+            class="ops-control ui-icon-button ops-settings-topbar-btn"
+            :class="{ active: route.name === 'settings' }"
+            size="small"
+            :icon="Settings"
+            :aria-label="t('nav.settings')"
+            @click="router.push({ name: 'settings' })"
+          />
+          <el-button class="ops-control ui-button ui-button--compact ui-button--muted ops-desktop-tool" size="small" @click="logout">
             <el-icon><LogOut /></el-icon>
             {{ t('shell.logout') }}
           </el-button>
@@ -150,16 +161,13 @@ import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
-  Layers,
   Menu,
   X,
   Home,
-  List,
   Moon,
   RefreshCw,
   Sun,
   LogOut,
-  AlertTriangle,
   Settings,
   Globe,
   Grid,
@@ -205,32 +213,14 @@ const currentHost = computed(() => {
 });
 
 const navItems = computed(() => [
-  { id: "dashboard", label: t("nav.dashboard"), path: "/", icon: Home, badge: null },
-  { id: "apps", label: t("nav.apps"), path: "/apps", icon: Grid, badge: null },
-  {
-    id: "updates",
-    label: t("nav.updates"),
-    path: "/updates",
-    icon: AlertTriangle,
-    badge: store.updateCount,
-    badgeTone: "danger",
-  },
-  { id: "audit", label: t("nav.audit"), path: "/audit", icon: List, badge: null },
-  {
-    id: "settings",
-    label: t("nav.settings"),
-    path: "/settings",
-    icon: Settings,
-    badge: null,
-  },
+  { id: "dashboard", label: t("nav.dashboard"), path: "/", icon: Home, badge: null, badgeTone: null },
+  { id: "apps", label: t("nav.apps"), path: "/apps", icon: Grid, badge: null, badgeTone: null },
 ]);
 
 const pageTitle = computed(() => {
   if (route.name === "host-detail") {
     return currentHost.value?.display_name || String(route.params.hostId || "Host");
   }
-  if (route.name === "updates") return t("nav.updates");
-  if (route.name === "audit") return t("nav.audit");
   if (route.name === "settings") return t("nav.settings");
   if (route.name === "apps") return t("apps.title");
   return t("nav.dashboard");
@@ -443,6 +433,7 @@ function logout() {
 }
 
 .ops-host-list {
+  flex: 1;
   min-height: 0;
   overflow: auto;
 }
@@ -511,6 +502,13 @@ function logout() {
   justify-content: flex-end;
 }
 
+.ops-settings-topbar-btn.active {
+  border-color: var(--nav-active-border);
+  background: var(--nav-active-bg);
+  color: var(--text-primary);
+  box-shadow: var(--nav-active-shadow);
+}
+
 .ops-control {
   height: 30px;
   display: inline-flex;
@@ -531,12 +529,6 @@ function logout() {
   min-width: 78px;
   padding: 0 10px;
   border-radius: 999px;
-}
-
-.ops-status-pill.warning {
-  border-color: rgba(248, 113, 113, 0.35);
-  background: rgba(248, 113, 113, 0.10);
-  color: var(--danger);
 }
 
 .ops-health-dot {
@@ -600,10 +592,10 @@ function logout() {
 .ops-sidebar-footer {
   display: none;
   margin-top: auto;
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--border-subtle);
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .ops-sidebar-footer-btn {
@@ -627,6 +619,17 @@ function logout() {
   border-color: var(--border-strong);
   background: var(--nav-hover-bg);
   color: var(--text-primary);
+}
+
+.ops-sidebar-footer-btn.active {
+  border-color: var(--nav-active-border);
+  background: var(--nav-active-bg);
+  color: var(--text-primary);
+  box-shadow: var(--nav-active-shadow);
+}
+
+.ops-sidebar-mobile-action {
+  display: none;
 }
 
 .ops-sidebar-footer-btn .el-icon {
@@ -692,7 +695,11 @@ function logout() {
     display: flex;
   }
 
-  .ops-topbar-right .el-button {
+  .ops-sidebar-mobile-action {
+    display: flex;
+  }
+
+  .ops-desktop-tool {
     display: none !important;
   }
 
