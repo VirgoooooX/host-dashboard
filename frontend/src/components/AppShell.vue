@@ -1,5 +1,9 @@
 <template>
   <div class="ops-shell" :style="{ gridTemplateColumns: sidebarWidth + 'px minmax(0, 1fr)' }">
+    <div class="ambient-aura" aria-hidden="true">
+      <div class="aura-blob blob-1"></div>
+      <div class="aura-blob blob-2"></div>
+    </div>
     <aside class="ops-sidebar" :class="{ 'is-mobile-open': sidebarOpen }">
       <div class="ops-brand" @click="router.push('/')">
         <div class="ops-brand-mark">
@@ -291,8 +295,19 @@ function startResize(e: MouseEvent) {
   document.body.classList.add("is-resizing-sidebar");
 }
 
+let trackerMouseMove: ((e: MouseEvent) => void) | null = null;
+
 onMounted(() => {
   store.startPolling(15000);
+  
+  const shell = document.querySelector(".ops-shell") as HTMLElement;
+  trackerMouseMove = (e: MouseEvent) => {
+    if (shell) {
+      shell.style.setProperty("--mouse-x", `${e.clientX}px`);
+      shell.style.setProperty("--mouse-y", `${e.clientY}px`);
+    }
+  };
+  window.addEventListener("mousemove", trackerMouseMove);
 });
 
 onUnmounted(() => {
@@ -300,6 +315,9 @@ onUnmounted(() => {
   document.removeEventListener("mousemove", handleMouseMove);
   document.removeEventListener("mouseup", handleMouseUp);
   document.body.classList.remove("is-resizing-sidebar");
+  if (trackerMouseMove) {
+    window.removeEventListener("mousemove", trackerMouseMove);
+  }
 });
 
 function isActive(id: string, path: string) {
@@ -857,5 +875,77 @@ function logout() {
 :global(body.is-resizing-sidebar *) {
   user-select: none !important;
   cursor: col-resize !important;
+}
+
+.ops-main {
+  position: relative;
+  z-index: 1;
+}
+
+.ops-main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, -1000px) var(--mouse-y, -1000px),
+    rgba(99, 102, 241, 0.035),
+    transparent 80%
+  );
+  z-index: 0;
+}
+
+/* Ambient Aura Background Styles */
+.ambient-aura {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.ambient-aura .aura-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(140px);
+  opacity: 0.04;
+  mix-blend-mode: screen;
+  animation: float-blob 25s infinite alternate ease-in-out;
+  pointer-events: none;
+}
+
+[data-theme="light"] .ambient-aura .aura-blob {
+  opacity: 0.02;
+  mix-blend-mode: multiply;
+}
+
+.ambient-aura .blob-1 {
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, var(--accent-blue, #3b82f6) 0%, transparent 80%);
+  top: -10%;
+  left: 20%;
+  animation-duration: 30s;
+}
+
+.ambient-aura .blob-2 {
+  width: 650px;
+  height: 650px;
+  background: radial-gradient(circle, var(--accent-cyan, #06b6d4) 0%, transparent 80%);
+  bottom: -15%;
+  right: 15%;
+  animation-duration: 25s;
+}
+
+@keyframes float-blob {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(80px, 45px) scale(1.08);
+  }
+  100% {
+    transform: translate(-40px, 80px) scale(0.95);
+  }
 }
 </style>

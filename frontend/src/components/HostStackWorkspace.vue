@@ -118,8 +118,13 @@
             v-for="stack in filteredStacks"
             :key="stack.name"
             class="stack-card"
-            :class="{ 'is-stopped': stack.status === 'stopped' || stack.status === 'inactive' || stack.status === 'exited' }"
+            :class="{
+              'is-stopped': stack.status === 'stopped' || stack.status === 'inactive' || stack.status === 'exited',
+              'is-operating': runningOperations[stack.name]
+            }"
             @click="selectStack(stack.name)"
+            @mousemove="handleCardMouseMove"
+            @mouseleave="handleCardMouseLeave"
           >
             <div class="stack-header">
               <div class="stack-title-row">
@@ -1457,6 +1462,26 @@ function showAllStacks() {
   stopLogs();
 }
 
+function handleCardMouseMove(e: MouseEvent) {
+  const card = e.currentTarget as HTMLElement;
+  if (!card) return;
+  const rect = card.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  
+  card.style.transform = "translate3d(0, -3px, 0)";
+  card.style.setProperty("--shine-x", `${x}px`);
+  card.style.setProperty("--shine-y", `${y}px`);
+}
+
+function handleCardMouseLeave(e: MouseEvent) {
+  const card = e.currentTarget as HTMLElement;
+  if (!card) return;
+  card.style.transform = "translate3d(0, 0, 0)";
+  card.style.removeProperty("--shine-x");
+  card.style.removeProperty("--shine-y");
+}
+
 function selectStack(stackName: string) {
   selectedStackName.value = stackName;
   selectedContainerId.value = "";
@@ -2279,6 +2304,22 @@ onUnmounted(() => {
   color: var(--text-secondary);
 }
 
+.workspace-summary,
+.section-heading span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.stack-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .sidebar-search input {
   width: 100%;
   min-width: 0;
@@ -2553,10 +2594,67 @@ onUnmounted(() => {
 .stack-card {
   padding: 12px;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 200ms ease, box-shadow 300ms ease, background-color 200ms ease, transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translate3d(0, 0, 0);
+}
+
+.stack-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    180px circle at var(--shine-x, -500px) var(--shine-y, -500px),
+    rgba(255, 255, 255, 0.08),
+    transparent 80%
+  );
+  z-index: 1;
+  transition: opacity 300ms ease;
+  opacity: 0;
+}
+
+.stack-card:hover::after {
+  opacity: 1;
 }
 
 .stack-card:hover {
   border-color: var(--border-strong);
+  box-shadow: 0 6px 24px -4px rgba(99, 102, 241, 0.08),
+              0 0 1px 1px rgba(99, 102, 241, 0.15);
+}
+
+.stack-card:not(.is-stopped):hover {
+  box-shadow: 0 6px 24px -4px rgba(52, 211, 153, 0.08),
+              0 0 1px 1px rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.stack-card.is-stopped:hover {
+  box-shadow: 0 6px 24px -4px rgba(148, 163, 184, 0.05),
+              0 0 1px 1px rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+/* Processing Pulse & Scanner animation */
+.stack-card.is-operating {
+  animation: border-pulse 2s infinite ease-in-out;
+}
+
+@keyframes border-pulse {
+  0% {
+    border-color: rgba(99, 102, 241, 0.5) !important;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.25);
+  }
+  50% {
+    border-color: rgba(6, 182, 212, 0.85) !important;
+    box-shadow: 0 0 4px rgba(6, 182, 212, 0.4), 0 0 20px rgba(6, 182, 212, 0.38);
+  }
+  100% {
+    border-color: rgba(99, 102, 241, 0.5) !important;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.25);
+  }
 }
 
 .stack-card.is-stopped {
