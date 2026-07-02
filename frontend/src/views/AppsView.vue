@@ -983,6 +983,7 @@ onUnmounted(() => {
   border: 1px solid var(--border-subtle) !important;
   border-left: none !important;
   box-shadow: none !important;
+  outline: none !important;
   color: var(--text-secondary) !important;
   font-size: 12px;
   font-weight: 700;
@@ -1009,6 +1010,12 @@ onUnmounted(() => {
   color: var(--accent-blue) !important;
   background: var(--ui-control-hover-bg) !important;
   border-color: var(--accent-blue) !important;
+  box-shadow: -1px 0 0 0 var(--accent-blue) !important;
+}
+
+.view-mode-group :deep(.el-radio-button:first-child .el-radio-button__inner:hover) {
+  border-left-color: var(--accent-blue) !important;
+  box-shadow: none !important;
 }
 
 .view-mode-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
@@ -1019,7 +1026,24 @@ onUnmounted(() => {
 }
 
 .view-mode-group :deep(.el-radio-button:first-child .el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  border-left-color: var(--accent-blue) !important;
   box-shadow: none !important;
+}
+
+.view-mode-group :deep(.el-radio-button__original-radio:focus-visible + .el-radio-button__inner) {
+  outline: 2px solid var(--accent-blue) !important;
+  outline-offset: 1px !important;
+  border-radius: 0 !important;
+}
+
+.view-mode-group :deep(.el-radio-button:first-child .el-radio-button__original-radio:focus-visible + .el-radio-button__inner) {
+  border-top-left-radius: var(--ui-radius-md) !important;
+  border-bottom-left-radius: var(--ui-radius-md) !important;
+}
+
+.view-mode-group :deep(.el-radio-button:last-child .el-radio-button__original-radio:focus-visible + .el-radio-button__inner) {
+  border-top-right-radius: var(--ui-radius-md) !important;
+  border-bottom-right-radius: var(--ui-radius-md) !important;
 }
 
 /* Filters and Chips */
